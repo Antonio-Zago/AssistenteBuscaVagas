@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AssistenteBuscaVagas.AgenteCandidatura/AssistenteBuscaVagas.AgenteCandidatura.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.AgenteMatch/AssistenteBuscaVagas.AgenteMatch.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.AgentePerfil/AssistenteBuscaVagas.AgentePerfil.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.AppHost/AssistenteBuscaVagas.AppHost.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.Frontend/AssistenteBuscaVagas.Frontend.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.McpVagas/AssistenteBuscaVagas.McpVagas.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.Roteador/AssistenteBuscaVagas.Roteador.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.ServiceDefaults/AssistenteBuscaVagas.ServiceDefaults.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.Supervisor/AssistenteBuscaVagas.Supervisor.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.WorkerDiario/AssistenteBuscaVagas.WorkerDiario.csproj" />
+  </Folder>
+</Solution>
