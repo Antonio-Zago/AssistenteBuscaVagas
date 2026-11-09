@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/AssistenteBuscaVagas.AgenteCandidatura/AssistenteBuscaVagas.AgenteCandidatura.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.AgenteColeta/AssistenteBuscaVagas.AgenteColeta.csproj" />
     <Project Path="src/AssistenteBuscaVagas.AgenteMatch/AssistenteBuscaVagas.AgenteMatch.csproj" />
     <Project Path="src/AssistenteBuscaVagas.AgentePerfil/AssistenteBuscaVagas.AgentePerfil.csproj" />
     <Project Path="src/AssistenteBuscaVagas.AppHost/AssistenteBuscaVagas.AppHost.csproj" />

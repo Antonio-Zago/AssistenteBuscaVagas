@@ -28,21 +28,19 @@ Objetivo de aprendizado: praticar, em .NET, os conceitos do curso de agentes da 
 │ frontend │────▶│  supervisor  │────▶│  roteador  │
 │ (Blazor) │     └───────┬──────┘     └────────────┘
 └──────────┘             │ A2A
-      ┌──────────────────┼──────────────────┐
-      ▼                  ▼                  ▼
-┌─────────────┐   ┌─────────────┐   ┌──────────────────┐
-│agente_perfil│   │agente_match │   │agente_candidatura│
-└──────┬──────┘   └──────┬──────┘   └────────┬─────────┘
-       └─────────────────┼───────────────────┘
-                         │ MCP
-                ┌────────▼────────┐
-                │   mcp_vagas     │──▶ Postgres (+ pgvector)
-                └────────┬────────┘
-                         │ HTTP
-              APIs públicas de vagas
+   ┌──────────────┬──────┴───────┬──────────────────┐
+   ▼              ▼              ▼                  ▼
+┌─────────────┐┌─────────────┐┌─────────────┐┌──────────────────┐
+│agente_coleta││agente_perfil││agente_match ││agente_candidatura│
+└──┬───────┬──┘└──────┬──────┘└──────┬──────┘└────────┬─────────┘
+   │       └──────────┴──────┬───────┴────────────────┘
+   │ MCP / HTTP              │ MCP
+   ▼                ┌────────▼────────┐
+Firecrawl (web)     │   mcp_vagas     │──▶ Postgres (+ pgvector)
+Remotive (API)      └─────────────────┘
 ```
 
-Os próprios agentes são **clientes MCP**: eles chamam as ferramentas do `mcp_vagas` sozinhos.
+Os próprios agentes são **clientes MCP**: eles chamam as ferramentas do `mcp_vagas` sozinhos. O `mcp_vagas` só guarda e consulta dados; quem vai buscar vagas fora é o `agente_coleta`.
 
 ---
 
@@ -52,13 +50,17 @@ Os próprios agentes são **clientes MCP**: eles chamam as ferramentas do `mcp_v
 
 | Ferramenta | O que faz |
 |---|---|
-| `coletar_vagas` | Busca vagas novas nas fontes configuradas |
+| `salvar_vagas` | Valida, deduplica e grava vagas trazidas pelo `agente_coleta` |
+| `listar_fontes` | Lista as fontes cadastradas e quando cada uma foi coletada pela última vez |
 | `listar_vagas` | Lista vagas com filtros (remoto, cidade, data) |
 | `obter_vaga` | Traz os detalhes completos de uma vaga |
 | `salvar_perfil` / `obter_perfil` | Guarda e lê o perfil estruturado |
 | `atualizar_status` | Move a vaga no kanban |
 | `registrar_feedback` | Registra quando o usuário diz "essa vaga não tem a ver comigo" |
 | `estatisticas_skills` | Mostra quais skills mais aparecem nas vagas compatíveis |
+
+### `agente_coleta` (A2A)
+Decide o que buscar (a partir do perfil), procura vagas na web pelo Firecrawl e na API da Remotive, extrai os dados estruturados (JSON-LD `JobPosting`) em código e grava tudo via `salvar_vagas`. Respeita `robots.txt`, os termos de cada fonte e um orçamento diário de créditos.
 
 ### `agente_perfil` (A2A)
 Lê o currículo (PDF) e o transforma em dados estruturados: skills, anos de experiência, senioridade, idiomas.
@@ -76,7 +78,7 @@ Mesma ideia do `bfa` do curso: descobre os Agent Cards e as ferramentas MCP e in
 Recebe a mensagem do usuário, consulta o roteador e chama o agente certo, encadeando agentes quando o pedido precisar.
 
 ### Worker diário
-Roda sozinho: coleta vagas, executa o match e avisa por e-mail ou Telegram.
+Roda sozinho: aciona o `agente_coleta`, executa o match e avisa por e-mail ou Telegram.
 
 ---
 
@@ -156,11 +158,13 @@ Essas bibliotecas evoluem rápido: conferir as versões atuais no NuGet antes de
 Cada fase termina com algo funcionando. Não avançar sem fechar a anterior.
 
 - [x] **Fase 0: esqueleto.** Solução .NET com Aspire e todos os serviços respondendo um health check.
-- [ ] **Fase 1: coleta.** O `mcp_vagas` busca vagas de **uma** fonte e salva no Postgres. Testar com o MCP Inspector (`npx @modelcontextprotocol/inspector`).
+- [x] **Fase 1a: armazenamento.** O `mcp_vagas` vira só a camada de dados: `salvar_vagas` (valida, deduplica e grava), `listar_vagas`, `obter_vaga` e `listar_fontes`, sobre o Postgres. Testar com o MCP Inspector (`npx @modelcontextprotocol/inspector`), sem LLM.
+- [ ] **Fase 1b: agente de coleta.** O `agente_coleta` (A2A, com LLM) decide o que buscar e grava via `salvar_vagas`. Ferramentas: busca web pelo MCP hospedado do Firecrawl (o LLM lê só título e trecho), `extrair_vaga` em código (confere o `robots.txt`, faz scrape em `rawHtml` e extrai o JSON-LD `JobPosting`, sem LLM) e a API da Remotive. Orçamento diário de créditos do Firecrawl no código e `excludeDomains` para LinkedIn, Indeed e Glassdoor.
 - [ ] **Fase 2: perfil.** O `agente_perfil` transforma o currículo em JSON validado.
 - [ ] **Fase 3: funil sem LLM.** Só filtros e BM25. Ver quão longe dá para ir sem IA.
 - [ ] **Fase 4: match com LLM.** Adicionar a última etapa do funil, com justificativas. Montar o conjunto de avaliação e medir a *precision@5*.
-- [ ] **Fase 5: worker + notificação.** Recomendações diárias automáticas.
+- [ ] **Fase 4.5: roteador + supervisor.** Os agentes publicam seus Agent Cards. O `roteador` descobre os cards e as ferramentas MCP e indexa tudo com BM25. O `supervisor` recebe uma mensagem em linguagem natural, consulta o roteador e chama o agente certo, encadeando agentes quando preciso (ex.: "atualize meu perfil e me mostre as vagas" → `agente_perfil` → `agente_match`). Entra aqui porque é a primeira vez que existe mais de um agente para escolher, e o frontend da fase 6 só fala com o supervisor.
+- [ ] **Fase 5: worker + notificação.** Recomendações diárias automáticas. O worker chama o `mcp_vagas` e o `agente_match` diretamente, sem passar pelo supervisor: fluxo fixo não precisa de roteamento.
 - [ ] **Fase 6: frontend.** Lista ranqueada, kanban e painel de lacunas.
 - [ ] **Fase 7: candidatura e feedback.** O `agente_candidatura` e o aprendizado com os descartes.
 - [ ] **Fase 8: mais fontes.** A deduplicação passa a ser obrigatória.
@@ -173,10 +177,12 @@ A fase 3 é a mais didática: comparar o funil sem LLM e com LLM mostra exatamen
 
 | Fase | Conceito praticado |
 |---|---|
-| 1 | Desenho de ferramentas MCP, integração com APIs externas |
+| 1a | Desenho de ferramentas MCP, validação na fronteira de dados |
+| 1b | Agente com ferramentas, cliente de vários servidores MCP, integração com APIs externas, custo e orçamento |
 | 2 | Saída estruturada e validação |
 | 3 | Busca e ranqueamento clássicos |
 | 4 | Funil de custo, avaliação (*precision@k*) |
+| 4.5 | A2A (Agent Cards), descoberta e roteamento, padrão supervisor |
 | 5 | Agentes disparados por eventos |
 | 7 | Human-in-the-loop, LLM-as-judge, personalização |
 | 8 | Qualidade de dados, deduplicação |

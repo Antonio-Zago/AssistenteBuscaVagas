@@ -1,11 +1,26 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Servidor MCP: dono dos dados (vagas, perfil, candidaturas).
-// Fase 1: adicionar Postgres + pgvector aqui (requer Docker).
+// Postgres em contêiner (requer Docker). A imagem pgvector já traz a extensão de busca vetorial,
+// que será usada nas fases de match. O volume mantém os dados entre execuções.
+var postgres = builder.AddPostgres("postgres")
+    .WithImage("pgvector/pgvector", "pg17")
+    .WithDataVolume()
+    .WithLifetime(ContainerLifetime.Persistent)
+    .WithPgAdmin();
+
+var vagasDb = postgres.AddDatabase("vagasdb");
+
+// Servidor MCP: só a camada de dados (vagas, perfil, candidaturas). Não busca nada fora.
 var mcpVagas = builder.AddProject<Projects.AssistenteBuscaVagas_McpVagas>("mcp-vagas")
+    .WithReference(vagasDb).WaitFor(vagasDb)
     .WithHttpHealthCheck("/health");
 
 // Agentes A2A: todos são clientes MCP do mcp-vagas.
+// agente-coleta: busca vagas na web (Firecrawl) e na Remotive e grava via salvar_vagas.
+var agenteColeta = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteColeta>("agente-coleta")
+    .WithReference(mcpVagas).WaitFor(mcpVagas)
+    .WithHttpHealthCheck("/health");
+
 var agentePerfil = builder.AddProject<Projects.AssistenteBuscaVagas_AgentePerfil>("agente-perfil")
     .WithReference(mcpVagas).WaitFor(mcpVagas)
     .WithHttpHealthCheck("/health");
@@ -21,6 +36,7 @@ var agenteCandidatura = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteC
 // Roteador: descobre Agent Cards e ferramentas MCP e indexa com BM25.
 var roteador = builder.AddProject<Projects.AssistenteBuscaVagas_Roteador>("roteador")
     .WithReference(mcpVagas).WaitFor(mcpVagas)
+    .WithReference(agenteColeta).WaitFor(agenteColeta)
     .WithReference(agentePerfil).WaitFor(agentePerfil)
     .WithReference(agenteMatch).WaitFor(agenteMatch)
     .WithReference(agenteCandidatura).WaitFor(agenteCandidatura)
@@ -29,14 +45,16 @@ var roteador = builder.AddProject<Projects.AssistenteBuscaVagas_Roteador>("rotea
 // Supervisor: recebe a mensagem do usuário, consulta o roteador e chama o agente certo.
 var supervisor = builder.AddProject<Projects.AssistenteBuscaVagas_Supervisor>("supervisor")
     .WithReference(roteador).WaitFor(roteador)
+    .WithReference(agenteColeta)
     .WithReference(agentePerfil)
     .WithReference(agenteMatch)
     .WithReference(agenteCandidatura)
     .WithHttpHealthCheck("/health");
 
-// Worker diário: coleta + match + notificação.
+// Worker diário: aciona a coleta e o match e notifica.
 builder.AddProject<Projects.AssistenteBuscaVagas_WorkerDiario>("worker-diario")
     .WithReference(mcpVagas).WaitFor(mcpVagas)
+    .WithReference(agenteColeta).WaitFor(agenteColeta)
     .WithReference(agenteMatch).WaitFor(agenteMatch)
     .WithHttpHealthCheck("/health");
 

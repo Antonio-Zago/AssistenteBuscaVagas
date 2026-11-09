@@ -9,6 +9,11 @@
     <ProjectReference Include="..\AssistenteBuscaVagas.Supervisor\AssistenteBuscaVagas.Supervisor.csproj" />
     <ProjectReference Include="..\AssistenteBuscaVagas.WorkerDiario\AssistenteBuscaVagas.WorkerDiario.csproj" />
     <ProjectReference Include="..\AssistenteBuscaVagas.Frontend\AssistenteBuscaVagas.Frontend.csproj" />
+    <ProjectReference Include="..\AssistenteBuscaVagas.AgenteColeta\AssistenteBuscaVagas.AgenteColeta.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.6.4" />
   </ItemGroup>
 
   <PropertyGroup>
