@@ -14,5 +14,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AssistenteBuscaVagas.AgenteColeta.Tests/AssistenteBuscaVagas.AgenteColeta.Tests.csproj" />
+    <Project Path="tests/AssistenteBuscaVagas.AgentePerfil.Tests/AssistenteBuscaVagas.AgentePerfil.Tests.csproj" />
+    <Project Path="tests/AssistenteBuscaVagas.McpVagas.Tests/AssistenteBuscaVagas.McpVagas.Tests.csproj" />
   </Folder>
 </Solution>

@@ -78,6 +78,28 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                         });
                 });
 
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Perfil", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Curriculo")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("CurriculoAtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Preferencias")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("PreferenciasAtualizadasEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("perfis", (string)null);
+                });
+
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Vaga", b =>
                 {
                     b.Property<int>("Id")

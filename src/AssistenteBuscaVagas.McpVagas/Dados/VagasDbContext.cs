@@ -9,6 +9,7 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
 
     public DbSet<Fonte> Fontes => Set<Fonte>();
     public DbSet<Vaga> Vagas => Set<Vaga>();
+    public DbSet<Perfil> Perfis => Set<Perfil>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +53,14 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
             e.HasIndex(v => new { v.FonteId, v.IdExterno }).IsUnique();
             e.HasIndex(v => v.HashDedup);
             e.HasIndex(v => v.PublicadaEm);
+        });
+
+        modelBuilder.Entity<Perfil>(e =>
+        {
+            e.ToTable("perfis");
+            e.Property(p => p.Id).ValueGeneratedNever();
+            e.Property(p => p.Curriculo).HasColumnType("jsonb");
+            e.Property(p => p.Preferencias).HasColumnType("jsonb");
         });
     }
 }

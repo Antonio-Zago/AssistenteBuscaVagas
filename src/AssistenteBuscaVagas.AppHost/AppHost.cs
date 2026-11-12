@@ -30,8 +30,10 @@ var agenteColeta = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteColeta
     .WithEnvironment("Firecrawl__ApiKey", firecrawlApiKey)
     .WithHttpHealthCheck("/health");
 
+// agente-perfil: lê o PDF do currículo, extrai JSON com o Claude e grava via salvar_perfil.
 var agentePerfil = builder.AddProject<Projects.AssistenteBuscaVagas_AgentePerfil>("agente-perfil")
     .WithReference(mcpVagas).WaitFor(mcpVagas)
+    .WithEnvironment("ANTHROPIC_API_KEY", anthropicApiKey)
     .WithHttpHealthCheck("/health");
 
 var agenteMatch = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteMatch>("agente-match")

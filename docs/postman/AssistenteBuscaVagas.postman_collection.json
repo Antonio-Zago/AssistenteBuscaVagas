@@ -1,0 +1,242 @@
+{
+  "info": {
+    "name": "AssistenteBuscaVagas",
+    "description": "Endpoints existentes até a Fase 2. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só 'POST /coletar' (Claude + Firecrawl) e 'POST /perfil/curriculo' (Claude) chamam APIs pagas.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "coleta", "value": "http://localhost:5249" },
+    { "key": "perfil", "value": "http://localhost:5219" },
+    { "key": "mcp", "value": "http://localhost:5014" },
+    { "key": "mcpSessionId", "value": "" },
+    { "key": "mcpProtocolVersion", "value": "2025-06-18" },
+    { "key": "vagaId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "agente-coleta",
+      "item": [
+        {
+          "name": "GET / (status)",
+          "request": { "method": "GET", "url": "{{coleta}}/" }
+        },
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{coleta}}/health" }
+        },
+        {
+          "name": "POST /coletar (Claude + Firecrawl, PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Roda o agente: o Claude planeja buscas, abre páginas e grava as vagas via salvar_vagas. Gasta tokens da Anthropic e até 26 créditos do Firecrawl por dia. 'pedido' é opcional.",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pedido\": \"faça a coleta diária, priorizando vagas remotas de .NET\"\n}" },
+            "url": "{{coleta}}/coletar"
+          }
+        },
+        {
+          "name": "POST /coletar/remotive (sem LLM)",
+          "request": {
+            "method": "POST",
+            "description": "Fluxo fixo: só a API da Remotive. Respeita o intervalo mínimo de 6 h entre consultas.",
+            "url": "{{coleta}}/coletar/remotive"
+          }
+        }
+      ]
+    },
+    {
+      "name": "agente-perfil",
+      "item": [
+        {
+          "name": "GET / (status)",
+          "request": { "method": "GET", "url": "{{perfil}}/" }
+        },
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{perfil}}/health" }
+        },
+        {
+          "name": "POST /perfil/curriculo (Claude, PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Envia o PDF do currículo (até 5 MB, até 10 páginas). Em Body > form-data, escolha o arquivo no campo 'arquivo'. O texto é enviado à API da Anthropic; o PDF não é guardado.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "arquivo", "type": "file", "src": [], "contentType": "application/pdf" }
+              ]
+            },
+            "url": "{{perfil}}/perfil/curriculo"
+          }
+        },
+        {
+          "name": "PUT /perfil/preferencias",
+          "request": {
+            "method": "PUT",
+            "description": "Substitui as preferências inteiras. Modalidades: Remoto, Híbrido, Presencial. Senioridade: Estágio, Júnior, Pleno, Sênior, Especialista, Liderança (ou null). Se informar salário, informe a moeda.",
+            "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cargos\": [\"Desenvolvedor .NET\", \"Backend Engineer\"],\n  \"modalidades\": [\"Remoto\", \"Híbrido\"],\n  \"cidades\": [\"São Paulo\"],\n  \"senioridade\": \"Sênior\",\n  \"salarioMinimoMensal\": 15000,\n  \"moeda\": \"BRL\",\n  \"idiomas\": [\"pt\", \"en\"]\n}"
+            },
+            "url": "{{perfil}}/perfil/preferencias"
+          }
+        },
+        {
+          "name": "GET /perfil",
+          "request": {
+            "method": "GET",
+            "description": "404 se o perfil ainda não foi cadastrado.",
+            "url": "{{perfil}}/perfil"
+          }
+        }
+      ]
+    },
+    {
+      "name": "mcp-vagas",
+      "description": "O servidor MCP fala JSON-RPC sobre Streamable HTTP em /mcp. Hoje ele roda sem sessão, então as ferramentas funcionam direto; os passos '1. initialize' e '2. initialized' mostram o handshake do protocolo (e guardam o Mcp-Session-Id, caso o servidor passe a usar sessão). As respostas vêm como evento SSE ('event: message' + 'data: {...}'), com o resultado em result.content[0].text. 'listar_vagas' guarda o id da primeira vaga em vagaId para o 'obter_vaga'.\n\nSó estão aqui as ferramentas de leitura. salvar_vagas e salvar_perfil gravam no banco; use os endpoints dos agentes para isso.",
+      "item": [
+        {
+          "name": "GET / (status)",
+          "request": { "method": "GET", "url": "{{mcp}}/" }
+        },
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{mcp}}/health" }
+        },
+        {
+          "name": "1. initialize",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// O mcp_vagas roda sem sessão (stateless) e não devolve Mcp-Session-Id; se um dia devolver, fica guardado.",
+                  "pm.collectionVariables.set('mcpSessionId', pm.response.headers.get('Mcp-Session-Id') || '');",
+                  "pm.test('initialize respondeu 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"{{mcpProtocolVersion}}\",\n    \"capabilities\": {},\n    \"clientInfo\": { \"name\": \"postman\", \"version\": \"1.0\" }\n  }\n}"
+            },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "2. initialized (notificação)",
+          "request": {
+            "method": "POST",
+            "description": "Notificação sem id: a resposta esperada é 202 sem corpo.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"notifications/initialized\"\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "tools/list",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\"\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_fontes",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"listar_fontes\", \"arguments\": {} }\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_vagas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A resposta é SSE: pega a linha 'data:', lê o JSON-RPC e depois o JSON dentro do bloco de texto.",
+                  "const linha = pm.response.text().split('\\n').find(l => l.startsWith('data:'));",
+                  "if (linha) {",
+                  "  const vagas = JSON.parse(JSON.parse(linha.slice(5)).result.content[0].text);",
+                  "  pm.test('listou vagas', () => pm.expect(vagas).to.be.an('array'));",
+                  "  if (vagas.length) pm.collectionVariables.set('vagaId', String(vagas[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "description": "Todos os argumentos são opcionais: termo, local, remoto (true/false), publicadasNosUltimosDias, limite (1 a 100).",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas\",\n    \"arguments\": { \"termo\": \".net\", \"limite\": 20 }\n  }\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "obter_vaga",
+          "request": {
+            "method": "POST",
+            "description": "Troque a variável vagaId por um id devolvido em listar_vagas.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"obter_vaga\",\n    \"arguments\": { \"id\": {{vagaId}} }\n  }\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "obter_perfil",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 6,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"obter_perfil\", \"arguments\": {} }\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -13,6 +13,7 @@ builder.AddNpgsqlDbContext<VagasDbContext>("vagasdb");
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<ArmazenamentoVagas>();
+builder.Services.AddScoped<ArmazenamentoPerfil>();
 
 // Servidor MCP via HTTP (Streamable HTTP), exposto em /mcp.
 // O mcp_vagas só guarda e consulta dados; a coleta fica no agente_coleta.
@@ -20,7 +21,7 @@ builder.Services.AddMcpServer()
     .WithHttpTransport()
     // Coleção de tipos: WithTools(typeof(X)) cairia na sobrecarga WithTools<T>(T alvo) com T = System.Type
     // e não registraria nada. Classe estática não pode ser argumento genérico, então WithTools<VagasTools>() não serve.
-    .WithTools([typeof(VagasTools)]);
+    .WithTools([typeof(VagasTools), typeof(PerfilTools)]);
 
 var app = builder.Build();
 
