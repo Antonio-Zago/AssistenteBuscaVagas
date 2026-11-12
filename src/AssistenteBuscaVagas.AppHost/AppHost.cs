@@ -15,10 +15,19 @@ var mcpVagas = builder.AddProject<Projects.AssistenteBuscaVagas_McpVagas>("mcp-v
     .WithReference(vagasDb).WaitFor(vagasDb)
     .WithHttpHealthCheck("/health");
 
+// Chaves de API como parâmetros secretos. Defina com user-secrets no projeto do AppHost:
+//   dotnet user-secrets set "Parameters:anthropic-api-key" "sk-ant-..." --project src/AssistenteBuscaVagas.AppHost
+//   dotnet user-secrets set "Parameters:firecrawl-api-key" "fc-..."     --project src/AssistenteBuscaVagas.AppHost
+// Se faltarem, o dashboard do Aspire pede os valores ao subir.
+var anthropicApiKey = builder.AddParameter("anthropic-api-key", secret: true);
+var firecrawlApiKey = builder.AddParameter("firecrawl-api-key", secret: true);
+
 // Agentes A2A: todos são clientes MCP do mcp-vagas.
 // agente-coleta: busca vagas na web (Firecrawl) e na Remotive e grava via salvar_vagas.
 var agenteColeta = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteColeta>("agente-coleta")
     .WithReference(mcpVagas).WaitFor(mcpVagas)
+    .WithEnvironment("ANTHROPIC_API_KEY", anthropicApiKey)
+    .WithEnvironment("Firecrawl__ApiKey", firecrawlApiKey)
     .WithHttpHealthCheck("/health");
 
 var agentePerfil = builder.AddProject<Projects.AssistenteBuscaVagas_AgentePerfil>("agente-perfil")

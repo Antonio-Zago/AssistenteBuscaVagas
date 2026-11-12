@@ -11,6 +11,12 @@ public sealed class RemotiveOptions
 
     /// <summary>Filtro opcional por texto (título e descrição).</summary>
     public string? Busca { get; set; }
+
+    /// <summary>
+    /// Categorias (nome, não slug) mantidas após a resposta. A API às vezes ignora o filtro
+    /// <c>category</c> e devolve vagas de todas as áreas, então filtramos também aqui. Vazio = aceita todas.
+    /// </summary>
+    public List<string> CategoriasAceitas { get; set; } = [];
 }
 
 /// <summary>
@@ -34,7 +40,11 @@ public sealed class RemotiveFonte(HttpClient http, IOptions<RemotiveOptions> opt
         var resposta = await http.GetFromJsonAsync<RemotiveResposta>(url, cancellationToken)
             ?? throw new InvalidOperationException("A Remotive devolveu uma resposta vazia.");
 
-        return resposta.Jobs.Select(Converter).ToList();
+        var aceitas = options.Value.CategoriasAceitas;
+        return resposta.Jobs
+            .Select(Converter)
+            .Where(v => aceitas.Count == 0 || aceitas.Contains(v.Categoria ?? "", StringComparer.OrdinalIgnoreCase))
+            .ToList();
     }
 
     private static VagaColetada Converter(RemotiveJob j) => new(

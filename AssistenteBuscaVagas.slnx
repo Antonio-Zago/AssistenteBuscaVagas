@@ -12,4 +12,7 @@
     <Project Path="src/AssistenteBuscaVagas.Supervisor/AssistenteBuscaVagas.Supervisor.csproj" />
     <Project Path="src/AssistenteBuscaVagas.WorkerDiario/AssistenteBuscaVagas.WorkerDiario.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AssistenteBuscaVagas.AgenteColeta.Tests/AssistenteBuscaVagas.AgenteColeta.Tests.csproj" />
+  </Folder>
 </Solution>
