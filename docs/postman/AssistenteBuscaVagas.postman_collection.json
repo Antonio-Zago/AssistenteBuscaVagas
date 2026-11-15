@@ -1,12 +1,13 @@
 {
   "info": {
     "name": "AssistenteBuscaVagas",
-    "description": "Endpoints existentes até a Fase 2. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só 'POST /coletar' (Claude + Firecrawl) e 'POST /perfil/curriculo' (Claude) chamam APIs pagas.",
+    "description": "Endpoints existentes até a Fase 3. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só 'POST /coletar' (Claude + Firecrawl) e 'POST /perfil/curriculo' (Claude) chamam APIs pagas.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "coleta", "value": "http://localhost:5249" },
     { "key": "perfil", "value": "http://localhost:5219" },
+    { "key": "match", "value": "http://localhost:5135" },
     { "key": "mcp", "value": "http://localhost:5014" },
     { "key": "mcpSessionId", "value": "" },
     { "key": "mcpProtocolVersion", "value": "2025-06-18" },
@@ -88,6 +89,35 @@
             "method": "GET",
             "description": "404 se o perfil ainda não foi cadastrado.",
             "url": "{{perfil}}/perfil"
+          }
+        }
+      ]
+    },
+    {
+      "name": "agente-match",
+      "item": [
+        {
+          "name": "GET / (status)",
+          "request": { "method": "GET", "url": "{{match}}/" }
+        },
+        {
+          "name": "GET /health",
+          "request": { "method": "GET", "url": "{{match}}/health" }
+        },
+        {
+          "name": "GET /match/funil (sem LLM)",
+          "request": {
+            "method": "GET",
+            "description": "Funil da fase 3: filtros rígidos + BM25, sem LLM e sem custo. Precisa de perfil cadastrado. 'limite' (1 a 100, padrão 20) e 'dias' (padrão 30) são opcionais. A resposta traz as etapas do funil com os descartes por motivo, as recomendações com justificativa e lacunas, as lacunas mais frequentes e a consulta usada.",
+            "url": {
+              "raw": "{{match}}/match/funil?limite=20&dias=30",
+              "host": ["{{match}}"],
+              "path": ["match", "funil"],
+              "query": [
+                { "key": "limite", "value": "20" },
+                { "key": "dias", "value": "30" }
+              ]
+            }
           }
         }
       ]
@@ -233,6 +263,21 @@
               { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
             ],
             "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 6,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"obter_perfil\", \"arguments\": {} }\n}" },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_vagas_para_match",
+          "request": {
+            "method": "POST",
+            "description": "Lote com descrição, para o funil. Paginação por cursor: aposId = maior id da página anterior; limite de 1 a 200.",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" },
+              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
+              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 7,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas_para_match\",\n    \"arguments\": { \"remoto\": true, \"publicadasNosUltimosDias\": 30, \"aposId\": 0, \"limite\": 5 }\n  }\n}" },
             "url": "{{mcp}}/mcp"
           }
         }
