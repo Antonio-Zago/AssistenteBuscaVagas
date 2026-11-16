@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "AssistenteBuscaVagas",
-    "description": "Endpoints existentes até a Fase 3. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só 'POST /coletar' (Claude + Firecrawl) e 'POST /perfil/curriculo' (Claude) chamam APIs pagas.",
+    "description": "Endpoints existentes até a Fase 4. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -117,6 +117,100 @@
                 { "key": "limite", "value": "20" },
                 { "key": "dias", "value": "30" }
               ]
+            }
+          }
+        },
+        {
+          "name": "POST /match/recomendacoes (Claude, PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Funil completo da fase 4: filtros + BM25 + Claude no top 20 do BM25 → 5 recomendações com nota, justificativa, pontos fortes, lacunas e impeditivos. Uma chamada ao Claude por vaga ainda não avaliada; as já avaliadas com o mesmo perfil/modelo/prompt vêm do cache (custo zero). A resposta traz o custo estimado. 'dias' é opcional (padrão 30).",
+            "url": {
+              "raw": "{{match}}/match/recomendacoes?dias=30",
+              "host": ["{{match}}"],
+              "path": ["match", "recomendacoes"],
+              "query": [{ "key": "dias", "value": "30" }]
+            }
+          }
+        },
+        {
+          "name": "GET /avaliacao/pendentes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Guarda a primeira vaga pendente em vagaId, para o PUT de rótulo.",
+                  "const r = pm.response.json();",
+                  "if (r.pendentes && r.pendentes.length) pm.collectionVariables.set('vagaId', String(r.pendentes[0].vagaId));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "description": "Vagas ainda sem rótulo, na ordem em que vale a pena rotular: primeiro as ranqueadas pelo BM25 (posicaoBm25), depois as que passam nos filtros, por fim as descartadas (descartadaPor). Abra a url de cada uma e rotule com o PUT abaixo. Grátis.",
+            "url": {
+              "raw": "{{match}}/avaliacao/pendentes?limite=20&dias=30",
+              "host": ["{{match}}"],
+              "path": ["avaliacao", "pendentes"],
+              "query": [
+                { "key": "limite", "value": "20" },
+                { "key": "dias", "value": "30" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /avaliacao/rotulos/{vagaId}",
+          "request": {
+            "method": "PUT",
+            "description": "Marca a vaga como boa (relevante: true) ou ruim (false) para você. Rotular de novo substitui. A observação é opcional.",
+            "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+            "body": { "mode": "raw", "raw": "{\n  \"relevante\": true,\n  \"observacao\": \"stack certa e remota para o Brasil\"\n}" },
+            "url": "{{match}}/avaliacao/rotulos/{{vagaId}}"
+          }
+        },
+        {
+          "name": "DELETE /avaliacao/rotulos/{vagaId}",
+          "request": {
+            "method": "DELETE",
+            "description": "Tira a vaga do conjunto de avaliação. 204 se removeu, 404 se não tinha rótulo.",
+            "url": "{{match}}/avaliacao/rotulos/{{vagaId}}"
+          }
+        },
+        {
+          "name": "GET /avaliacao/rotulos",
+          "request": {
+            "method": "GET",
+            "description": "Lista o conjunto de avaliação: total, quantas relevantes e cada rótulo.",
+            "url": "{{match}}/avaliacao/rotulos"
+          }
+        },
+        {
+          "name": "POST /avaliacao/executar (sem LLM, grátis)",
+          "request": {
+            "method": "POST",
+            "description": "Roda o funil só sobre as vagas rotuladas e mede a precision@5 do BM25, o recall do BM25 e as relevantes descartadas pelos filtros.",
+            "url": {
+              "raw": "{{match}}/avaliacao/executar?usarLlm=false",
+              "host": ["{{match}}"],
+              "path": ["avaliacao", "executar"],
+              "query": [{ "key": "usarLlm", "value": "false" }]
+            }
+          }
+        },
+        {
+          "name": "POST /avaliacao/executar (com LLM, PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Igual ao anterior, mais a precision@5 com o Claude reordenando o top 20 do BM25. Vagas já avaliadas com o mesmo perfil e prompt saem do cache, então repetir a avaliação sem mudar nada é grátis.",
+            "url": {
+              "raw": "{{match}}/avaliacao/executar?usarLlm=true",
+              "host": ["{{match}}"],
+              "path": ["avaliacao", "executar"],
+              "query": [{ "key": "usarLlm", "value": "true" }]
             }
           }
         }

@@ -78,6 +78,63 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                         });
                 });
 
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Match", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ChaveAvaliacao")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("Impeditivos")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Justificativa")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.PrimitiveCollection<List<string>>("Lacunas")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Modelo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("Nota")
+                        .HasColumnType("integer");
+
+                    b.PrimitiveCollection<List<string>>("PontosFortes")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<int>("VagaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VersaoPrompt")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VagaId");
+
+                    b.HasIndex("ChaveAvaliacao", "VagaId")
+                        .IsUnique();
+
+                    b.ToTable("matches", (string)null);
+                });
+
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Perfil", b =>
                 {
                     b.Property<int>("Id")
@@ -98,6 +155,26 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("perfis", (string)null);
+                });
+
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Rotulo", b =>
+                {
+                    b.Property<int>("VagaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("Relevante")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("VagaId");
+
+                    b.ToTable("rotulos", (string)null);
                 });
 
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Vaga", b =>
@@ -182,6 +259,28 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                         .IsUnique();
 
                     b.ToTable("vagas", (string)null);
+                });
+
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Match", b =>
+                {
+                    b.HasOne("AssistenteBuscaVagas.McpVagas.Dados.Vaga", "Vaga")
+                        .WithMany()
+                        .HasForeignKey("VagaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Vaga");
+                });
+
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Rotulo", b =>
+                {
+                    b.HasOne("AssistenteBuscaVagas.McpVagas.Dados.Vaga", "Vaga")
+                        .WithMany()
+                        .HasForeignKey("VagaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Vaga");
                 });
 
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Vaga", b =>

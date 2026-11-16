@@ -131,9 +131,13 @@ public static class VagasTools
         [Description("Somente vagas publicadas (ou, sem data de publicação, coletadas) nos últimos N dias.")] int? publicadasNosUltimosDias = null,
         [Description("Devolve só vagas com id maior que este (cursor da página anterior).")] int aposId = 0,
         [Description("Tamanho da página (1 a 200).")] int limite = 200,
+        [Description("Somente estas vagas (opcional). Usado pela avaliação, que lê as vagas rotuladas.")] IReadOnlyList<int>? ids = null,
         CancellationToken cancellationToken = default)
     {
         var consulta = db.Vagas.AsNoTracking().Where(v => v.Id > aposId);
+
+        if (ids is { Count: > 0 })
+            consulta = consulta.Where(v => ids.Contains(v.Id));
 
         if (remoto is { } r)
             consulta = consulta.Where(v => v.Remoto == r);

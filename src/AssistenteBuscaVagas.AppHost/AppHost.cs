@@ -36,8 +36,10 @@ var agentePerfil = builder.AddProject<Projects.AssistenteBuscaVagas_AgentePerfil
     .WithEnvironment("ANTHROPIC_API_KEY", anthropicApiKey)
     .WithHttpHealthCheck("/health");
 
+// agente-match: funil de match (filtros + BM25 em código, Claude só no top do BM25) e avaliação por precision@5.
 var agenteMatch = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteMatch>("agente-match")
     .WithReference(mcpVagas).WaitFor(mcpVagas)
+    .WithEnvironment("ANTHROPIC_API_KEY", anthropicApiKey)
     .WithHttpHealthCheck("/health");
 
 var agenteCandidatura = builder.AddProject<Projects.AssistenteBuscaVagas_AgenteCandidatura>("agente-candidatura")

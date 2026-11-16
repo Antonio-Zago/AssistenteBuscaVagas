@@ -10,6 +10,8 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
     public DbSet<Fonte> Fontes => Set<Fonte>();
     public DbSet<Vaga> Vagas => Set<Vaga>();
     public DbSet<Perfil> Perfis => Set<Perfil>();
+    public DbSet<Match> Matches => Set<Match>();
+    public DbSet<Rotulo> Rotulos => Set<Rotulo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +63,25 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
             e.Property(p => p.Id).ValueGeneratedNever();
             e.Property(p => p.Curriculo).HasColumnType("jsonb");
             e.Property(p => p.Preferencias).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<Match>(e =>
+        {
+            e.ToTable("matches");
+            e.Property(m => m.ChaveAvaliacao).HasMaxLength(64);
+            e.Property(m => m.Modelo).HasMaxLength(100);
+            e.Property(m => m.Justificativa).HasMaxLength(2000);
+            e.HasOne(m => m.Vaga).WithMany().HasForeignKey(m => m.VagaId).OnDelete(DeleteBehavior.Cascade);
+            // Uma avaliação por vaga e por chave (perfil + modelo + prompt): é a chave do cache.
+            e.HasIndex(m => new { m.ChaveAvaliacao, m.VagaId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Rotulo>(e =>
+        {
+            e.ToTable("rotulos");
+            e.HasKey(r => r.VagaId);
+            e.Property(r => r.Observacao).HasMaxLength(500);
+            e.HasOne(r => r.Vaga).WithMany().HasForeignKey(r => r.VagaId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }
