@@ -1,3 +1,4 @@
+using AssistenteBuscaVagas.Comum.Busca;
 using AssistenteBuscaVagas.AgenteMatch.Funil;
 
 namespace AssistenteBuscaVagas.AgenteMatch.Tests;

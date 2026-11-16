@@ -1,3 +1,5 @@
+using AssistenteBuscaVagas.Comum.Busca;
+
 namespace AssistenteBuscaVagas.AgenteMatch.Funil;
 
 /// <summary>Motivo de descarte: um código curto (para contar no resumo do funil) e o detalhe da vaga.</summary>

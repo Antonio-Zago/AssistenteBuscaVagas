@@ -2,9 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AssistenteBuscaVagas.ServiceDefaults\AssistenteBuscaVagas.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\AssistenteBuscaVagas.Comum\AssistenteBuscaVagas.Comum.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="A2A.AspNetCore" Version="1.0.0-preview4" />
     <PackageReference Include="Anthropic" Version="13.6.0" />
     <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
     <PackageReference Include="PdfPig" Version="0.1.16" />

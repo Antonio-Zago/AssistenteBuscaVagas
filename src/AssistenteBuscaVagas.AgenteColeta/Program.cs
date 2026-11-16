@@ -1,4 +1,7 @@
+using A2A;
+using A2A.AspNetCore;
 using Anthropic;
+using AssistenteBuscaVagas.Comum.A2A;
 using AssistenteBuscaVagas.AgenteColeta.Agente;
 using AssistenteBuscaVagas.AgenteColeta.Armazenamento;
 using AssistenteBuscaVagas.AgenteColeta.Configuracao;
@@ -47,11 +50,21 @@ builder.Services
 
 builder.Services.AddScoped<AgenteColetaServico>();
 
+// A2A (fase 4.5): Agent Card + endpoint JSON-RPC. A URL é lógica; o service discovery do Aspire a resolve.
+builder.Services.AddA2AAgent<AgenteColetaA2A>(CartaoA2A.Criar(
+    "agente_coleta",
+    "Busca vagas de emprego novas em fontes públicas (Remotive e sites de empresas via web) e grava no banco.",
+    builder.Configuration["A2A:Url"] ?? "http://agente-coleta/a2a",
+    AgenteColetaA2A.Lista));
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-app.MapGet("/", () => "Agente de coleta (Claude + Firecrawl + Remotive). POST /coletar para executar.");
+app.MapGet("/", () => "Agente de coleta (Claude + Firecrawl + Remotive). POST /coletar para executar. A2A em /a2a.");
+
+app.MapA2A("/a2a");
+app.MapWellKnownAgentCard(app.Services.GetRequiredService<AgentCard>());
 
 // Dispara uma execução. O worker diário (fase 5) e o supervisor (fase 4.5) chamarão este endpoint.
 app.MapPost("/coletar", async (PedidoColeta? pedido, AgenteColetaServico agente, CancellationToken ct) =>

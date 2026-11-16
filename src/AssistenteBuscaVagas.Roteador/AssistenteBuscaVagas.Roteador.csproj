@@ -2,6 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AssistenteBuscaVagas.ServiceDefaults\AssistenteBuscaVagas.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\AssistenteBuscaVagas.Comum\AssistenteBuscaVagas.Comum.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -9,5 +14,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AssistenteBuscaVagas.Orquestracao.Tests" />
+  </ItemGroup>
 
 </Project>

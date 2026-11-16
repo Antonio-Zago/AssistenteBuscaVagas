@@ -1,3 +1,5 @@
+using AssistenteBuscaVagas.Comum.Busca;
+
 namespace AssistenteBuscaVagas.AgenteMatch.Funil;
 
 // Cópias parciais do contrato do mcp_vagas (ContratoPerfil.cs e VagasTools.cs). Cada serviço tem a sua cópia:
@@ -54,7 +56,6 @@ public sealed record VagaParaMatch(
 
 public sealed record EtapaFunil(string Etapa, int Vagas, IReadOnlyDictionary<string, int>? Descartes = null);
 
-public sealed record TermoPontuado(string Termo, double Pontos);
 
 public sealed record Recomendacao(
     int Posicao,

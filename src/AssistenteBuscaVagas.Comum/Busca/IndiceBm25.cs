@@ -1,4 +1,4 @@
-namespace AssistenteBuscaVagas.AgenteMatch.Funil;
+namespace AssistenteBuscaVagas.Comum.Busca;
 
 /// <summary>
 /// BM25 escrito à mão, em memória. O plano previa Lucene.NET, mas para algumas centenas de vagas um índice
@@ -61,3 +61,6 @@ public sealed class IndiceBm25
     public double Pontuar(int doc, IReadOnlyDictionary<string, double> consulta) =>
         Contribuicoes(doc, consulta).Sum(t => t.Pontos);
 }
+
+/// <summary>Quanto um termo da consulta somou na pontuação de um documento.</summary>
+public sealed record TermoPontuado(string Termo, double Pontos);

@@ -5,6 +5,7 @@
     <Project Path="src/AssistenteBuscaVagas.AgenteMatch/AssistenteBuscaVagas.AgenteMatch.csproj" />
     <Project Path="src/AssistenteBuscaVagas.AgentePerfil/AssistenteBuscaVagas.AgentePerfil.csproj" />
     <Project Path="src/AssistenteBuscaVagas.AppHost/AssistenteBuscaVagas.AppHost.csproj" />
+    <Project Path="src/AssistenteBuscaVagas.Comum/AssistenteBuscaVagas.Comum.csproj" />
     <Project Path="src/AssistenteBuscaVagas.Frontend/AssistenteBuscaVagas.Frontend.csproj" />
     <Project Path="src/AssistenteBuscaVagas.McpVagas/AssistenteBuscaVagas.McpVagas.csproj" />
     <Project Path="src/AssistenteBuscaVagas.Roteador/AssistenteBuscaVagas.Roteador.csproj" />
@@ -17,5 +18,6 @@
     <Project Path="tests/AssistenteBuscaVagas.AgenteMatch.Tests/AssistenteBuscaVagas.AgenteMatch.Tests.csproj" />
     <Project Path="tests/AssistenteBuscaVagas.AgentePerfil.Tests/AssistenteBuscaVagas.AgentePerfil.Tests.csproj" />
     <Project Path="tests/AssistenteBuscaVagas.McpVagas.Tests/AssistenteBuscaVagas.McpVagas.Tests.csproj" />
+    <Project Path="tests/AssistenteBuscaVagas.Orquestracao.Tests/AssistenteBuscaVagas.Orquestracao.Tests.csproj" />
   </Folder>
 </Solution>

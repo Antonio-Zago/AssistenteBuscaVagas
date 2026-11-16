@@ -56,8 +56,11 @@ var roteador = builder.AddProject<Projects.AssistenteBuscaVagas_Roteador>("rotea
     .WithHttpHealthCheck("/health");
 
 // Supervisor: recebe a mensagem do usuário, consulta o roteador e chama o agente certo.
+// Também lê o mcp_vagas direto (ferramentas só de leitura escolhidas pelo roteador).
 var supervisor = builder.AddProject<Projects.AssistenteBuscaVagas_Supervisor>("supervisor")
     .WithReference(roteador).WaitFor(roteador)
+    .WithReference(mcpVagas)
+    .WithEnvironment("ANTHROPIC_API_KEY", anthropicApiKey)
     .WithReference(agenteColeta)
     .WithReference(agentePerfil)
     .WithReference(agenteMatch)

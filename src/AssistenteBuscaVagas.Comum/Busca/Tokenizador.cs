@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace AssistenteBuscaVagas.AgenteMatch.Funil;
+namespace AssistenteBuscaVagas.Comum.Busca;
 
 /// <summary>
 /// Quebra texto em termos para o BM25. Feito à mão porque nomes de tecnologia não sobrevivem a um tokenizador

@@ -1,3 +1,5 @@
+using AssistenteBuscaVagas.Comum.Busca;
+
 namespace AssistenteBuscaVagas.AgenteMatch.Funil;
 
 /// <summary>

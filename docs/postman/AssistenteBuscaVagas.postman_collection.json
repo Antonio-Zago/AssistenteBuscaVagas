@@ -1,17 +1,46 @@
 {
   "info": {
     "name": "AssistenteBuscaVagas",
-    "description": "Endpoints existentes até a Fase 4. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
+    "description": "Endpoints existentes até a Fase 4.5. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "coleta", "value": "http://localhost:5249" },
-    { "key": "perfil", "value": "http://localhost:5219" },
-    { "key": "match", "value": "http://localhost:5135" },
-    { "key": "mcp", "value": "http://localhost:5014" },
-    { "key": "mcpSessionId", "value": "" },
-    { "key": "mcpProtocolVersion", "value": "2025-06-18" },
-    { "key": "vagaId", "value": "1" }
+    {
+      "key": "coleta",
+      "value": "http://localhost:5249"
+    },
+    {
+      "key": "perfil",
+      "value": "http://localhost:5219"
+    },
+    {
+      "key": "match",
+      "value": "http://localhost:5135"
+    },
+    {
+      "key": "roteador",
+      "value": "http://localhost:5041"
+    },
+    {
+      "key": "supervisor",
+      "value": "http://localhost:5192"
+    },
+    {
+      "key": "mcp",
+      "value": "http://localhost:5014"
+    },
+    {
+      "key": "mcpSessionId",
+      "value": ""
+    },
+    {
+      "key": "mcpProtocolVersion",
+      "value": "2025-06-18"
+    },
+    {
+      "key": "vagaId",
+      "value": "1"
+    }
   ],
   "item": [
     {
@@ -19,19 +48,33 @@
       "item": [
         {
           "name": "GET / (status)",
-          "request": { "method": "GET", "url": "{{coleta}}/" }
+          "request": {
+            "method": "GET",
+            "url": "{{coleta}}/"
+          }
         },
         {
           "name": "GET /health",
-          "request": { "method": "GET", "url": "{{coleta}}/health" }
+          "request": {
+            "method": "GET",
+            "url": "{{coleta}}/health"
+          }
         },
         {
           "name": "POST /coletar (Claude + Firecrawl, PAGO)",
           "request": {
             "method": "POST",
             "description": "Roda o agente: o Claude planeja buscas, abre páginas e grava as vagas via salvar_vagas. Gasta tokens da Anthropic e até 26 créditos do Firecrawl por dia. 'pedido' é opcional.",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"pedido\": \"faça a coleta diária, priorizando vagas remotas de .NET\"\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedido\": \"faça a coleta diária, priorizando vagas remotas de .NET\"\n}"
+            },
             "url": "{{coleta}}/coletar"
           }
         },
@@ -42,6 +85,36 @@
             "description": "Fluxo fixo: só a API da Remotive. Respeita o intervalo mínimo de 6 h entre consultas.",
             "url": "{{coleta}}/coletar/remotive"
           }
+        },
+        {
+          "name": "GET Agent Card",
+          "request": {
+            "method": "GET",
+            "description": "Agent Card (A2A): nome, descrição, URL do endpoint e habilidades. É o que o roteador lê.",
+            "url": "{{coleta}}/.well-known/agent-card.json"
+          }
+        },
+        {
+          "name": "A2A SendMessage: coletar_remotive",
+          "request": {
+            "method": "POST",
+            "description": "Coleta da Remotive, sem LLM. Envelope do projeto: parte de texto (pedido) + parte de dados {\"habilidade\", \"dados\"}. A resposta vem em result.message.parts: texto (resumo) + dados {\"resultado\"} ou {\"erro\"}.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "A2A-Version",
+                "value": "1.0"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"SendMessage\",\n  \"params\": {\n    \"message\": {\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"ROLE_USER\",\n      \"parts\": [\n        {\n          \"text\": \"busque vagas novas\"\n        },\n        {\n          \"data\": {\n            \"habilidade\": \"coletar_remotive\"\n          }\n        }\n      ]\n    }\n  }\n}"
+            },
+            "url": "{{coleta}}/a2a"
+          }
         }
       ]
     },
@@ -50,11 +123,17 @@
       "item": [
         {
           "name": "GET / (status)",
-          "request": { "method": "GET", "url": "{{perfil}}/" }
+          "request": {
+            "method": "GET",
+            "url": "{{perfil}}/"
+          }
         },
         {
           "name": "GET /health",
-          "request": { "method": "GET", "url": "{{perfil}}/health" }
+          "request": {
+            "method": "GET",
+            "url": "{{perfil}}/health"
+          }
         },
         {
           "name": "POST /perfil/curriculo (Claude, PAGO)",
@@ -64,7 +143,12 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "arquivo", "type": "file", "src": [], "contentType": "application/pdf" }
+                {
+                  "key": "arquivo",
+                  "type": "file",
+                  "src": [],
+                  "contentType": "application/pdf"
+                }
               ]
             },
             "url": "{{perfil}}/perfil/curriculo"
@@ -75,7 +159,12 @@
           "request": {
             "method": "PUT",
             "description": "Substitui as preferências inteiras. Modalidades: Remoto, Híbrido, Presencial. Senioridade: Estágio, Júnior, Pleno, Sênior, Especialista, Liderança (ou null). Se informar salário, informe a moeda.",
-            "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"cargos\": [\"Desenvolvedor .NET\", \"Backend Engineer\"],\n  \"modalidades\": [\"Remoto\", \"Híbrido\"],\n  \"cidades\": [\"São Paulo\"],\n  \"senioridade\": \"Sênior\",\n  \"salarioMinimoMensal\": 15000,\n  \"moeda\": \"BRL\",\n  \"idiomas\": [\"pt\", \"en\"]\n}"
@@ -90,6 +179,58 @@
             "description": "404 se o perfil ainda não foi cadastrado.",
             "url": "{{perfil}}/perfil"
           }
+        },
+        {
+          "name": "GET Agent Card",
+          "request": {
+            "method": "GET",
+            "description": "Agent Card (A2A): nome, descrição, URL do endpoint e habilidades. É o que o roteador lê.",
+            "url": "{{perfil}}/.well-known/agent-card.json"
+          }
+        },
+        {
+          "name": "A2A SendMessage: obter_perfil",
+          "request": {
+            "method": "POST",
+            "description": "Lê o perfil. Envelope do projeto: parte de texto (pedido) + parte de dados {\"habilidade\", \"dados\"}. A resposta vem em result.message.parts: texto (resumo) + dados {\"resultado\"} ou {\"erro\"}.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "A2A-Version",
+                "value": "1.0"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"SendMessage\",\n  \"params\": {\n    \"message\": {\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"ROLE_USER\",\n      \"parts\": [\n        {\n          \"text\": \"qual é o meu perfil?\"\n        },\n        {\n          \"data\": {\n            \"habilidade\": \"obter_perfil\"\n          }\n        }\n      ]\n    }\n  }\n}"
+            },
+            "url": "{{perfil}}/a2a"
+          }
+        },
+        {
+          "name": "A2A SendMessage: atualizar_preferencias",
+          "request": {
+            "method": "POST",
+            "description": "Atualização PARCIAL: só os campos enviados mudam. Envelope do projeto: parte de texto (pedido) + parte de dados {\"habilidade\", \"dados\"}. A resposta vem em result.message.parts: texto (resumo) + dados {\"resultado\"} ou {\"erro\"}.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "A2A-Version",
+                "value": "1.0"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"SendMessage\",\n  \"params\": {\n    \"message\": {\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"ROLE_USER\",\n      \"parts\": [\n        {\n          \"text\": \"agora também aceito híbrido\"\n        },\n        {\n          \"data\": {\n            \"habilidade\": \"atualizar_preferencias\",\n            \"dados\": {\n              \"modalidades\": [\n                \"Remoto\",\n                \"Híbrido\"\n              ]\n            }\n          }\n        }\n      ]\n    }\n  }\n}"
+            },
+            "url": "{{perfil}}/a2a"
+          }
         }
       ]
     },
@@ -98,11 +239,17 @@
       "item": [
         {
           "name": "GET / (status)",
-          "request": { "method": "GET", "url": "{{match}}/" }
+          "request": {
+            "method": "GET",
+            "url": "{{match}}/"
+          }
         },
         {
           "name": "GET /health",
-          "request": { "method": "GET", "url": "{{match}}/health" }
+          "request": {
+            "method": "GET",
+            "url": "{{match}}/health"
+          }
         },
         {
           "name": "GET /match/funil (sem LLM)",
@@ -111,11 +258,22 @@
             "description": "Funil da fase 3: filtros rígidos + BM25, sem LLM e sem custo. Precisa de perfil cadastrado. 'limite' (1 a 100, padrão 20) e 'dias' (padrão 30) são opcionais. A resposta traz as etapas do funil com os descartes por motivo, as recomendações com justificativa e lacunas, as lacunas mais frequentes e a consulta usada.",
             "url": {
               "raw": "{{match}}/match/funil?limite=20&dias=30",
-              "host": ["{{match}}"],
-              "path": ["match", "funil"],
+              "host": [
+                "{{match}}"
+              ],
+              "path": [
+                "match",
+                "funil"
+              ],
               "query": [
-                { "key": "limite", "value": "20" },
-                { "key": "dias", "value": "30" }
+                {
+                  "key": "limite",
+                  "value": "20"
+                },
+                {
+                  "key": "dias",
+                  "value": "30"
+                }
               ]
             }
           }
@@ -127,9 +285,19 @@
             "description": "Funil completo da fase 4: filtros + BM25 + Claude no top 20 do BM25 → 5 recomendações com nota, justificativa, pontos fortes, lacunas e impeditivos. Uma chamada ao Claude por vaga ainda não avaliada; as já avaliadas com o mesmo perfil/modelo/prompt vêm do cache (custo zero). A resposta traz o custo estimado. 'dias' é opcional (padrão 30).",
             "url": {
               "raw": "{{match}}/match/recomendacoes?dias=30",
-              "host": ["{{match}}"],
-              "path": ["match", "recomendacoes"],
-              "query": [{ "key": "dias", "value": "30" }]
+              "host": [
+                "{{match}}"
+              ],
+              "path": [
+                "match",
+                "recomendacoes"
+              ],
+              "query": [
+                {
+                  "key": "dias",
+                  "value": "30"
+                }
+              ]
             }
           }
         },
@@ -153,11 +321,22 @@
             "description": "Vagas ainda sem rótulo, na ordem em que vale a pena rotular: primeiro as ranqueadas pelo BM25 (posicaoBm25), depois as que passam nos filtros, por fim as descartadas (descartadaPor). Abra a url de cada uma e rotule com o PUT abaixo. Grátis.",
             "url": {
               "raw": "{{match}}/avaliacao/pendentes?limite=20&dias=30",
-              "host": ["{{match}}"],
-              "path": ["avaliacao", "pendentes"],
+              "host": [
+                "{{match}}"
+              ],
+              "path": [
+                "avaliacao",
+                "pendentes"
+              ],
               "query": [
-                { "key": "limite", "value": "20" },
-                { "key": "dias", "value": "30" }
+                {
+                  "key": "limite",
+                  "value": "20"
+                },
+                {
+                  "key": "dias",
+                  "value": "30"
+                }
               ]
             }
           }
@@ -167,8 +346,16 @@
           "request": {
             "method": "PUT",
             "description": "Marca a vaga como boa (relevante: true) ou ruim (false) para você. Rotular de novo substitui. A observação é opcional.",
-            "header": [{ "key": "Content-Type", "value": "application/json; charset=utf-8" }],
-            "body": { "mode": "raw", "raw": "{\n  \"relevante\": true,\n  \"observacao\": \"stack certa e remota para o Brasil\"\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"relevante\": true,\n  \"observacao\": \"stack certa e remota para o Brasil\"\n}"
+            },
             "url": "{{match}}/avaliacao/rotulos/{{vagaId}}"
           }
         },
@@ -195,9 +382,19 @@
             "description": "Roda o funil só sobre as vagas rotuladas e mede a precision@5 do BM25, o recall do BM25 e as relevantes descartadas pelos filtros.",
             "url": {
               "raw": "{{match}}/avaliacao/executar?usarLlm=false",
-              "host": ["{{match}}"],
-              "path": ["avaliacao", "executar"],
-              "query": [{ "key": "usarLlm", "value": "false" }]
+              "host": [
+                "{{match}}"
+              ],
+              "path": [
+                "avaliacao",
+                "executar"
+              ],
+              "query": [
+                {
+                  "key": "usarLlm",
+                  "value": "false"
+                }
+              ]
             }
           }
         },
@@ -208,10 +405,146 @@
             "description": "Igual ao anterior, mais a precision@5 com o Claude reordenando o top 20 do BM25. Vagas já avaliadas com o mesmo perfil e prompt saem do cache, então repetir a avaliação sem mudar nada é grátis.",
             "url": {
               "raw": "{{match}}/avaliacao/executar?usarLlm=true",
-              "host": ["{{match}}"],
-              "path": ["avaliacao", "executar"],
-              "query": [{ "key": "usarLlm", "value": "true" }]
+              "host": [
+                "{{match}}"
+              ],
+              "path": [
+                "avaliacao",
+                "executar"
+              ],
+              "query": [
+                {
+                  "key": "usarLlm",
+                  "value": "true"
+                }
+              ]
             }
+          }
+        },
+        {
+          "name": "GET Agent Card",
+          "request": {
+            "method": "GET",
+            "description": "Agent Card (A2A): nome, descrição, URL do endpoint e habilidades. É o que o roteador lê.",
+            "url": "{{match}}/.well-known/agent-card.json"
+          }
+        },
+        {
+          "name": "A2A SendMessage: ver_funil",
+          "request": {
+            "method": "POST",
+            "description": "Funil sem LLM, grátis. Envelope do projeto: parte de texto (pedido) + parte de dados {\"habilidade\", \"dados\"}. A resposta vem em result.message.parts: texto (resumo) + dados {\"resultado\"} ou {\"erro\"}.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "A2A-Version",
+                "value": "1.0"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"SendMessage\",\n  \"params\": {\n    \"message\": {\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"ROLE_USER\",\n      \"parts\": [\n        {\n          \"text\": \"como está o funil?\"\n        },\n        {\n          \"data\": {\n            \"habilidade\": \"ver_funil\",\n            \"dados\": {\n              \"limite\": 5\n            }\n          }\n        }\n      ]\n    }\n  }\n}"
+            },
+            "url": "{{match}}/a2a"
+          }
+        }
+      ]
+    },
+    {
+      "name": "roteador",
+      "description": "Descobre os Agent Cards e as ferramentas MCP e indexa tudo com BM25. Grátis.",
+      "item": [
+        {
+          "name": "GET /roteador/capacidades",
+          "request": {
+            "method": "GET",
+            "description": "Catálogo completo e estado da última descoberta (inclusive agentes que não responderam).",
+            "url": "{{roteador}}/roteador/capacidades"
+          }
+        },
+        {
+          "name": "GET /roteador/buscar",
+          "request": {
+            "method": "GET",
+            "description": "As k capacidades mais parecidas com o pedido, com os termos que pontuaram.",
+            "url": {
+              "raw": "{{roteador}}/roteador/buscar?q=atualize meu perfil e me mostre as vagas&k=6",
+              "host": [
+                "{{roteador}}"
+              ],
+              "path": [
+                "roteador",
+                "buscar"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "atualize meu perfil e me mostre as vagas"
+                },
+                {
+                  "key": "k",
+                  "value": "6"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /roteador/atualizar",
+          "request": {
+            "method": "POST",
+            "description": "Redescobre agora (ex.: depois de mudar o card de um agente).",
+            "url": "{{roteador}}/roteador/atualizar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "supervisor",
+      "description": "Recebe o pedido em linguagem natural, consulta o roteador e deixa o Claude chamar os agentes certos.",
+      "item": [
+        {
+          "name": "GET /conversa/rota (grátis)",
+          "request": {
+            "method": "GET",
+            "description": "Só o roteamento, sem LLM: o que o roteador achou e quais ferramentas o Claude receberia.",
+            "url": {
+              "raw": "{{supervisor}}/conversa/rota?mensagem=atualize meu perfil para aceitar híbrido e me mostre as melhores vagas",
+              "host": [
+                "{{supervisor}}"
+              ],
+              "path": [
+                "conversa",
+                "rota"
+              ],
+              "query": [
+                {
+                  "key": "mensagem",
+                  "value": "atualize meu perfil para aceitar híbrido e me mostre as melhores vagas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /conversa (Claude, PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Conversa de um turno. O supervisor (Claude) chama os agentes; se chamar recomendar_vagas ou coletar_vagas, eles também gastam. A resposta traz o texto final, os passos (cada chamada, com argumentos e duração) e as capacidades oferecidas.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensagem\": \"quantas vagas tenho de cada fonte e como está o funil sem IA?\"\n}"
+            },
+            "url": "{{supervisor}}/conversa"
           }
         }
       ]
@@ -222,11 +555,17 @@
       "item": [
         {
           "name": "GET / (status)",
-          "request": { "method": "GET", "url": "{{mcp}}/" }
+          "request": {
+            "method": "GET",
+            "url": "{{mcp}}/"
+          }
         },
         {
           "name": "GET /health",
-          "request": { "method": "GET", "url": "{{mcp}}/health" }
+          "request": {
+            "method": "GET",
+            "url": "{{mcp}}/health"
+          }
         },
         {
           "name": "1. initialize",
@@ -246,8 +585,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -262,12 +607,27 @@
             "method": "POST",
             "description": "Notificação sem id: a resposta esperada é 202 sem corpo.",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"notifications/initialized\"\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"notifications/initialized\"\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         },
@@ -276,12 +636,27 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\"\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\"\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         },
@@ -290,12 +665,27 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"listar_fontes\", \"arguments\": {} }\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"listar_fontes\", \"arguments\": {} }\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         },
@@ -322,12 +712,27 @@
             "method": "POST",
             "description": "Todos os argumentos são opcionais: termo, local, remoto (true/false), publicadasNosUltimosDias, limite (1 a 100).",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas\",\n    \"arguments\": { \"termo\": \".net\", \"limite\": 20 }\n  }\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas\",\n    \"arguments\": { \"termo\": \".net\", \"limite\": 20 }\n  }\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         },
@@ -337,12 +742,27 @@
             "method": "POST",
             "description": "Troque a variável vagaId por um id devolvido em listar_vagas.",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"obter_vaga\",\n    \"arguments\": { \"id\": {{vagaId}} }\n  }\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"obter_vaga\",\n    \"arguments\": { \"id\": {{vagaId}} }\n  }\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         },
@@ -351,12 +771,27 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 6,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"obter_perfil\", \"arguments\": {} }\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 6,\n  \"method\": \"tools/call\",\n  \"params\": { \"name\": \"obter_perfil\", \"arguments\": {} }\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         },
@@ -366,12 +801,27 @@
             "method": "POST",
             "description": "Lote com descrição, para o funil. Paginação por cursor: aposId = maior id da página anterior; limite de 1 a 200.",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Accept", "value": "application/json, text/event-stream" },
-              { "key": "Mcp-Session-Id", "value": "{{mcpSessionId}}" },
-              { "key": "MCP-Protocol-Version", "value": "{{mcpProtocolVersion}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
             ],
-            "body": { "mode": "raw", "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 7,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas_para_match\",\n    \"arguments\": { \"remoto\": true, \"publicadasNosUltimosDias\": 30, \"aposId\": 0, \"limite\": 5 }\n  }\n}" },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 7,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas_para_match\",\n    \"arguments\": { \"remoto\": true, \"publicadasNosUltimosDias\": 30, \"aposId\": 0, \"limite\": 5 }\n  }\n}"
+            },
             "url": "{{mcp}}/mcp"
           }
         }

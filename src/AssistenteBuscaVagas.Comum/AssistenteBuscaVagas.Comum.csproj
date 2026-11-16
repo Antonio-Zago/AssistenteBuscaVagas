@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Código compartilhado entre os serviços que não é contrato de dados: busca (tokenizador + BM25)
+    e o envelope A2A combinado entre supervisor e agentes. Os contratos de dados continuam sendo o JSON
+    das ferramentas MCP, com uma cópia dos tipos em cada serviço.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="A2A" Version="1.0.0-preview4" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+  </ItemGroup>
+
+</Project>

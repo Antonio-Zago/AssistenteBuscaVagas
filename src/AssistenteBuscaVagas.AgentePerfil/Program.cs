@@ -1,5 +1,9 @@
+using A2A;
+using A2A.AspNetCore;
 using Anthropic;
+using AssistenteBuscaVagas.AgentePerfil;
 using AssistenteBuscaVagas.AgentePerfil.Perfil;
+using AssistenteBuscaVagas.Comum.A2A;
 using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,11 +20,21 @@ builder.Services.AddHttpClient(McpVagasCliente.NomeHttpClient);
 builder.Services.AddSingleton(_ => new AnthropicClient());
 builder.Services.AddSingleton<ExtratorCurriculo>();
 
+// A2A (fase 4.5): Agent Card + endpoint JSON-RPC. A URL é lógica; o service discovery do Aspire a resolve.
+builder.Services.AddA2AAgent<AgentePerfilA2A>(CartaoA2A.Criar(
+    "agente_perfil",
+    "Guarda e mostra o perfil do usuário (currículo estruturado e preferências de busca de emprego).",
+    builder.Configuration["A2A:Url"] ?? "http://agente-perfil/a2a",
+    AgentePerfilA2A.Lista));
+
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-app.MapGet("/", () => "Agente de perfil. POST /perfil/curriculo (PDF), PUT /perfil/preferencias, GET /perfil.");
+app.MapGet("/", () => "Agente de perfil. POST /perfil/curriculo (PDF), PUT /perfil/preferencias, GET /perfil. A2A em /a2a.");
+
+app.MapA2A("/a2a");
+app.MapWellKnownAgentCard(app.Services.GetRequiredService<AgentCard>());
 
 // Recebe o PDF, extrai o texto localmente, pede ao Claude o JSON estruturado e grava via salvar_perfil.
 // O PDF e o texto ficam só em memória durante a requisição.
