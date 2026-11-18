@@ -1,0 +1,93 @@
+@page "/conversa"
+@inject ApiSupervisor Api
+
+<PageTitle>Conversa · Assistente de Vagas</PageTitle>
+
+<h1>Conversa</h1>
+<p class="sutil">
+    Peça em português; o supervisor escolhe os agentes. Cada mensagem é independente (ele não lembra das anteriores).
+    Enviar chama o Claude (pago); "Ver rota" só mostra quais ferramentas ele receberia (grátis).
+</p>
+
+<div class="historico">
+    @foreach (var t in turnos)
+    {
+        <div class="balao usuario">@t.Pergunta</div>
+        @if (t.Resposta is { } r)
+        {
+            <div class="balao assistente">
+                <div class="texto">@r.Resposta</div>
+                @if (r.Passos is { Count: > 0 })
+                {
+                    <details>
+                        <summary>@r.Passos.Count chamada(s) feita(s)</summary>
+                        <ul class="passos">
+                            @foreach (var p in r.Passos)
+                            {
+                                <li class="@(p.Sucesso ? "" : "falhou")">@p.Ordem. <code>@p.Ferramenta</code> (@p.Tipo, @(p.DuracaoMs / 1000.0)s): @p.Resumo</li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </div>
+        }
+        else if (t.Rota is { } rota)
+        {
+            <div class="balao assistente">
+                <p>Ferramentas que o Claude receberia:</p>
+                <ul class="passos">
+                    @foreach (var o in rota.Oferecidas ?? [])
+                    {
+                        <li><code>@o.Ferramenta</code> · pontuação @o.Pontuacao.ToString("0.0")@(o.Paga ? " · pago" : "")</li>
+                    }
+                </ul>
+            </div>
+        }
+        else if (t.Erro is not null)
+        {
+            <div class="balao assistente erro">@t.Erro</div>
+        }
+        else
+        {
+            <div class="balao assistente sutil">Pensando… (pode levar alguns minutos se envolver coleta)</div>
+        }
+    }
+</div>
+
+<form class="entrada" @onsubmit="Enviar" @onsubmit:preventDefault>
+    <textarea rows="2" placeholder="Ex.: quais vagas foram recomendadas esta semana e o que mais me falta?" @bind="mensagem" @bind:event="oninput" disabled="@ocupado"></textarea>
+    <div class="acoes">
+        <button type="submit" class="botao principal" disabled="@(ocupado || string.IsNullOrWhiteSpace(mensagem))">Enviar</button>
+        <button type="button" class="botao" disabled="@(ocupado || string.IsNullOrWhiteSpace(mensagem))" @onclick="VerRota">Ver rota (grátis)</button>
+    </div>
+</form>
+
+@code {
+    private sealed class Turno(string pergunta)
+    {
+        public string Pergunta { get; } = pergunta;
+        public RespostaConversa? Resposta { get; set; }
+        public RotaPrevista? Rota { get; set; }
+        public string? Erro { get; set; }
+    }
+
+    private readonly List<Turno> turnos = [];
+    private string mensagem = "";
+    private bool ocupado;
+
+    private Task Enviar() => Executar(async t => t.Resposta = await Api.ConversarAsync(t.Pergunta));
+
+    private Task VerRota() => Executar(async t => t.Rota = await Api.RotaAsync(t.Pergunta));
+
+    private async Task Executar(Func<Turno, Task> acao)
+    {
+        if (string.IsNullOrWhiteSpace(mensagem) || ocupado) return;
+        var turno = new Turno(mensagem.Trim());
+        turnos.Add(turno);
+        mensagem = "";
+        ocupado = true;
+        try { await acao(turno); }
+        catch (ErroApiException ex) { turno.Erro = ex.Message; }
+        finally { ocupado = false; }
+    }
+}

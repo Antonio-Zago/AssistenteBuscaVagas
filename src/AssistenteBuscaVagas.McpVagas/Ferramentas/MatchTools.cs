@@ -51,6 +51,20 @@ public static class MatchTools
         }
     }
 
+    [McpServerTool(Name = "listar_avaliacoes", ReadOnly = true)]
+    [Description("Histórico de vagas já avaliadas pelo LLM, da maior nota para a menor: nota, justificativa, pontos fortes, lacunas, " +
+                 "impeditivos, quando foi avaliada e se entrou num resumo do worker. Inclui vagas com nota baixa. " +
+                 "Use para \"quais vagas já foram avaliadas?\" ou \"por que tal vaga teve nota baixa?\".")]
+    public static Task<ResultadoAvaliacoes> ListarAvaliacoes(
+        ArmazenamentoAvaliacoes armazenamento,
+        [Description("Só vagas com nota a partir disto (0 a 100).")] int notaMinima = 0,
+        [Description("true (padrão): só avaliações do perfil atual. false: a avaliação mais recente de cada vaga, de qualquer perfil.")] bool soPerfilAtual = true,
+        [Description("Só vagas que já entraram num resumo do worker.")] bool soRecomendadas = false,
+        [Description("Texto procurado no título ou na empresa (opcional).")] string? busca = null,
+        [Description("Quantidade máxima (1 a 200).")] int limite = 100,
+        CancellationToken cancellationToken = default) =>
+        armazenamento.ListarAsync(Math.Clamp(notaMinima, 0, 100), soPerfilAtual, soRecomendadas, busca, limite, cancellationToken);
+
     [McpServerTool(Name = "rotular_vaga", Destructive = true, Idempotent = true)]
     [Description("Marca uma vaga como relevante (boa para o usuário) ou não. É o conjunto de avaliação usado para medir a precision@5 do funil. " +
                  "Rotular de novo substitui o rótulo anterior.")]

@@ -23,6 +23,33 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Candidatura", b =>
+                {
+                    b.Property<int>("VagaId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("AtualizadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CriadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notas")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("VagaId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("candidaturas", (string)null);
+                });
+
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.ExecucaoDiaria", b =>
                 {
                     b.Property<int>("Id")
@@ -317,6 +344,17 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                         .IsUnique();
 
                     b.ToTable("vagas", (string)null);
+                });
+
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Candidatura", b =>
+                {
+                    b.HasOne("AssistenteBuscaVagas.McpVagas.Dados.Vaga", "Vaga")
+                        .WithMany()
+                        .HasForeignKey("VagaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Vaga");
                 });
 
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Match", b =>

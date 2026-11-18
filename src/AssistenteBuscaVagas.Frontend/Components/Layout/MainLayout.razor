@@ -1,9 +1,26 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<div class="app">
+    <header class="topo">
+        <div class="topo-dentro">
+            <a class="marca" href="">Assistente de Vagas</a>
+            <nav class="abas">
+                <NavLink href="" Match="NavLinkMatch.All">Recomendações</NavLink>
+                <NavLink href="historico">Histórico</NavLink>
+                <NavLink href="kanban">Candidaturas</NavLink>
+                <NavLink href="lacunas">Lacunas</NavLink>
+                <NavLink href="conversa">Conversa</NavLink>
+            </nav>
+        </div>
+    </header>
+
+    <main class="conteudo">
+        @Body
+    </main>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
+    Ocorreu um erro inesperado.
+    <a href="." class="reload">Recarregar</a>
     <span class="dismiss">🗙</span>
 </div>

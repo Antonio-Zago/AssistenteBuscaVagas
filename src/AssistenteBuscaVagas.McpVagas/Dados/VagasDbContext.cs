@@ -14,6 +14,7 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
     public DbSet<Rotulo> Rotulos => Set<Rotulo>();
     public DbSet<ExecucaoDiaria> ExecucoesDiarias => Set<ExecucaoDiaria>();
     public DbSet<RecomendacaoEnviada> RecomendacoesEnviadas => Set<RecomendacaoEnviada>();
+    public DbSet<Candidatura> Candidaturas => Set<Candidatura>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -100,6 +101,16 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
             e.HasKey(x => x.VagaId);
             e.HasOne(x => x.Vaga).WithMany().HasForeignKey(x => x.VagaId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(x => x.Execucao).WithMany().HasForeignKey(x => x.ExecucaoId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Candidatura>(e =>
+        {
+            e.ToTable("candidaturas");
+            e.HasKey(x => x.VagaId);
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.Notas).HasMaxLength(2000);
+            e.HasOne(x => x.Vaga).WithMany().HasForeignKey(x => x.VagaId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.Status);
         });
     }
 }

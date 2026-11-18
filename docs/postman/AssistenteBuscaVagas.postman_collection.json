@@ -1,10 +1,14 @@
 {
   "info": {
     "name": "AssistenteBuscaVagas",
-    "description": "Endpoints existentes até a Fase 5. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
+    "description": "Endpoints existentes até a Fase 6. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
+    {
+      "key": "frontend",
+      "value": "http://localhost:5086"
+    },
     {
       "key": "coleta",
       "value": "http://localhost:5249"
@@ -556,7 +560,7 @@
     },
     {
       "name": "supervisor",
-      "description": "Recebe o pedido em linguagem natural, consulta o roteador e deixa o Claude chamar os agentes certos.",
+      "description": "Recebe o pedido em linguagem natural (/conversa, pago) e serve a API estruturada do frontend (/api/*, sem LLM, grátis exceto /api/recomendacoes/avaliar).",
       "item": [
         {
           "name": "GET /conversa/rota (grátis)",
@@ -597,6 +601,181 @@
               "raw": "{\n  \"mensagem\": \"quantas vagas tenho de cada fonte e como está o funil sem IA?\"\n}"
             },
             "url": "{{supervisor}}/conversa"
+          }
+        },
+        {
+          "name": "GET /api/execucoes",
+          "request": {
+            "method": "GET",
+            "description": "Rodadas do worker com as vagas recomendadas (grátis).",
+            "url": {
+              "raw": "{{supervisor}}/api/execucoes?limite=14",
+              "host": [
+                "{{supervisor}}"
+              ],
+              "path": [
+                "api",
+                "execucoes"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "14"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/recomendacoes/avaliar (PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Ranking atual com o Claude (top 5). Vagas já avaliadas vêm do cache; só as novas custam.",
+            "url": {
+              "raw": "{{supervisor}}/api/recomendacoes/avaliar?somenteNovas=false",
+              "host": [
+                "{{supervisor}}"
+              ],
+              "path": [
+                "api",
+                "recomendacoes",
+                "avaliar"
+              ],
+              "query": [
+                {
+                  "key": "somenteNovas",
+                  "value": "false"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/avaliacoes",
+          "request": {
+            "method": "GET",
+            "description": "Histórico de todas as vagas já avaliadas pelo Claude (cache), grátis. soPerfilAtual=false inclui avaliações de perfis anteriores; soRecomendadas=true filtra as que entraram num resumo do worker.",
+            "url": {
+              "raw": "{{supervisor}}/api/avaliacoes?notaMinima=0&soPerfilAtual=true&soRecomendadas=false&limite=100",
+              "host": [
+                "{{supervisor}}"
+              ],
+              "path": [
+                "api",
+                "avaliacoes"
+              ],
+              "query": [
+                {
+                  "key": "notaMinima",
+                  "value": "0"
+                },
+                {
+                  "key": "soPerfilAtual",
+                  "value": "true"
+                },
+                {
+                  "key": "soRecomendadas",
+                  "value": "false"
+                },
+                {
+                  "key": "busca",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limite",
+                  "value": "100"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/funil",
+          "request": {
+            "method": "GET",
+            "description": "Ranking sem IA (filtros + BM25), grátis.",
+            "url": {
+              "raw": "{{supervisor}}/api/funil?limite=20",
+              "host": [
+                "{{supervisor}}"
+              ],
+              "path": [
+                "api",
+                "funil"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/lacunas",
+          "request": {
+            "method": "GET",
+            "description": "Lacunas mais frequentes nas vagas avaliadas para o perfil atual (grátis).",
+            "url": {
+              "raw": "{{supervisor}}/api/lacunas?notaMinima=0",
+              "host": [
+                "{{supervisor}}"
+              ],
+              "path": [
+                "api",
+                "lacunas"
+              ],
+              "query": [
+                {
+                  "key": "notaMinima",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/candidaturas",
+          "request": {
+            "method": "GET",
+            "description": "Kanban: vagas, etapa, notas e nota do match.",
+            "url": "{{supervisor}}/api/candidaturas"
+          }
+        },
+        {
+          "name": "PUT /api/candidaturas/{vagaId}",
+          "request": {
+            "method": "PUT",
+            "description": "Põe a vaga no kanban ou muda a etapa: salva, aplicada, entrevista, oferta, recusada. notas omitidas mantêm as anteriores; \"\" apaga. Só registra: não envia candidatura.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"salva\",\n  \"notas\": null\n}"
+            },
+            "url": "{{supervisor}}/api/candidaturas/{{vagaId}}"
+          }
+        },
+        {
+          "name": "DELETE /api/candidaturas/{vagaId}",
+          "request": {
+            "method": "DELETE",
+            "description": "Tira a vaga do kanban. 204 se removeu, 404 se não estava.",
+            "url": "{{supervisor}}/api/candidaturas/{{vagaId}}"
+          }
+        },
+        {
+          "name": "GET /api/vagas/{vagaId}",
+          "request": {
+            "method": "GET",
+            "description": "Detalhe de uma vaga (obter_vaga).",
+            "url": "{{supervisor}}/api/vagas/{{vagaId}}"
           }
         }
       ]
@@ -975,6 +1154,93 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 9,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas_recomendadas\",\n    \"arguments\": {}\n  }\n}"
+            },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_candidaturas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 10,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_candidaturas\",\n    \"arguments\": {}\n  }\n}"
+            },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "estatisticas_skills",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 11,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"estatisticas_skills\",\n    \"arguments\": {\n      \"notaMinima\": 0\n    }\n  }\n}"
+            },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_avaliacoes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 12,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_avaliacoes\",\n    \"arguments\": {\n      \"notaMinima\": 0,\n      \"soPerfilAtual\": true,\n      \"limite\": 20\n    }\n  }\n}"
             },
             "url": "{{mcp}}/mcp"
           }

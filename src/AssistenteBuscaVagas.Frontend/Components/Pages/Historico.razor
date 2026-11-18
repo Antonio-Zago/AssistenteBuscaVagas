@@ -1,0 +1,105 @@
+@page "/historico"
+@inject ApiSupervisor Api
+
+<PageTitle>Histórico · Assistente de Vagas</PageTitle>
+
+<h1>Histórico de avaliações</h1>
+<p class="sutil">
+    Todas as vagas que o Claude já avaliou, da maior nota para a menor, inclusive as que não entraram nos resumos do worker.
+    Vem do cache de avaliações: abrir esta tela não gasta nada.
+</p>
+
+<form class="filtros" @onsubmit="Carregar" @onsubmit:preventDefault>
+    <label>
+        Nota a partir de
+        <select @bind="notaMinima" @bind:after="Carregar">
+            @foreach (var n in new[] { 0, 40, 50, 60, 70 })
+            {
+                <option value="@n">@(n == 0 ? "qualquer" : n.ToString())</option>
+            }
+        </select>
+    </label>
+    <label class="busca">
+        <span class="visualmente-oculto">Buscar</span>
+        <input type="search" placeholder="Título ou empresa" @bind="busca" />
+    </label>
+    <button type="submit" class="botao">Buscar</button>
+    <label class="opcao"><input type="checkbox" @bind="soRecomendadas" @bind:after="Carregar" /> Só as recomendadas pelo worker</label>
+    <label class="opcao"><input type="checkbox" @bind="incluirPerfisAntigos" @bind:after="Carregar" /> Incluir avaliações de perfis anteriores</label>
+</form>
+
+@if (erro is not null)
+{
+    <div class="aviso erro">@erro</div>
+}
+
+@if (resultado is null)
+{
+    <p class="sutil">@(erro is null ? "Carregando…" : "Não foi possível carregar o histórico.")</p>
+}
+else
+{
+    var vagas = resultado.Vagas ?? [];
+    @if (vagas.Count == 0)
+    {
+        <p>
+            Nenhuma vaga avaliada com esses filtros.
+            @if (!incluirPerfisAntigos) { <span class="sutil">Se você mudou o perfil há pouco, marque "Incluir avaliações de perfis anteriores".</span> }
+        </p>
+    }
+    else
+    {
+        <p class="sutil">
+            @resultado.Total vaga(s)@(vagas.Count < resultado.Total ? $", mostrando as {vagas.Count} de maior nota" : "")
+            · @vagas.Count(v => v.Nota >= 60) com nota 60 ou mais
+        </p>
+        <div class="grade">
+            @foreach (var v in vagas)
+            {
+                <CartaoVaga Vaga="VagaCartao.De(v)" Detalhe="@Detalhe(v)" EtapaAtual="@etapas.GetValueOrDefault(v.VagaId)" OnSalvar="Salvar" />
+            }
+        </div>
+    }
+}
+
+@code {
+    private ResultadoAvaliacoes? resultado;
+    private Dictionary<int, string> etapas = [];
+    private int notaMinima;
+    private string? busca;
+    private bool soRecomendadas, incluirPerfisAntigos;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { etapas = (await Api.CandidaturasAsync()).ToDictionary(c => c.VagaId, c => c.Status); }
+        catch (ErroApiException) { /* o erro aparece na carga do histórico, logo abaixo */ }
+        await Carregar();
+    }
+
+    private async Task Carregar()
+    {
+        erro = null;
+        try { resultado = await Api.AvaliacoesAsync(notaMinima, soPerfilAtual: !incluirPerfisAntigos, soRecomendadas, busca); }
+        catch (ErroApiException ex) { erro = ex.Message; resultado = null; }
+    }
+
+    private async Task Salvar(VagaCartao vaga)
+    {
+        erro = null;
+        try
+        {
+            var c = await Api.AtualizarCandidaturaAsync(vaga.VagaId, "salva", null);
+            etapas[c.VagaId] = c.Status;
+        }
+        catch (ErroApiException ex) { erro = ex.Message; }
+    }
+
+    private static string Detalhe(VagaAvaliada v)
+    {
+        var partes = new List<string> { $"avaliada em {v.AvaliadaEm.ToLocalTime():dd/MM/yyyy}", v.Fonte };
+        if (v.Remoto) partes.Add("remota");
+        if (v.RecomendadaEm is { } r) partes.Add($"recomendada pelo worker em {r.ToLocalTime():dd/MM}");
+        return string.Join(" · ", partes);
+    }
+}

@@ -1,7 +1,171 @@
 ﻿@page "/"
+@inject ApiSupervisor Api
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Recomendações · Assistente de Vagas</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Recomendações</h1>
+<p class="sutil">
+    O worker roda segunda e quinta às 09:00 e guarda aqui as vagas novas com nota a partir de 60.
+    Você também pode pedir o ranking atual na hora. Todas as vagas já avaliadas, inclusive as de nota baixa, estão no
+    <a href="historico">Histórico</a>.
+</p>
 
-Welcome to your new app.
+@if (erro is not null)
+{
+    <div class="aviso erro">@erro</div>
+}
+
+<section class="bloco">
+    <div class="bloco-cabeca">
+        <h2>Ranking atual</h2>
+        @if (!confirmando)
+        {
+            <button class="botao principal" disabled="@avaliando" @onclick="() => confirmando = true">
+                @(avaliando ? "Avaliando… (pode levar 1 min)" : "Avaliar agora")
+            </button>
+        }
+    </div>
+
+    @if (confirmando)
+    {
+        <div class="aviso">
+            <p>
+                Isso pede ao Claude o top 5 das vagas atuais. Vagas já avaliadas vêm do cache (grátis);
+                só as novas custam (centavos por vaga).
+            </p>
+            <label class="opcao"><input type="checkbox" @bind="somenteNovas" /> Ignorar vagas já recomendadas pelo worker</label>
+            <div class="acoes">
+                <button class="botao principal" @onclick="AvaliarAgora">Confirmar</button>
+                <button class="botao" @onclick="() => confirmando = false">Cancelar</button>
+            </div>
+        </div>
+    }
+
+    @if (ranking is not null)
+    {
+        @if (ranking.Custo is { } c)
+        {
+            <p class="sutil">
+                @c.ReaproveitadasDoCache do cache, @(c.ChamadasLlm - c.Falhas) avaliadas agora
+                · custo estimado US$ @c.CustoEstimadoUsd.ToString("0.0000")
+                @if (c.Falhas > 0) { <span> · @c.Falhas falharam</span> }
+            </p>
+        }
+        @if (ranking.Recomendacoes is not { Count: > 0 })
+        {
+            <p>Nenhuma vaga passou pelos filtros e pelo BM25. Veja o funil no Postman (<code>GET /match/funil</code>).</p>
+        }
+        else
+        {
+            <div class="grade">
+                @foreach (var r in ranking.Recomendacoes)
+                {
+                    <CartaoVaga Vaga="VagaCartao.De(r)" EtapaAtual="Etapa(r.VagaId)" OnSalvar="Salvar" />
+                }
+            </div>
+        }
+    }
+    else if (!confirmando && !avaliando)
+    {
+        <p class="sutil">Ainda não pedido nesta visita.</p>
+    }
+</section>
+
+<section class="bloco">
+    <h2>Rodadas do worker</h2>
+
+    @if (falhouCarregar)
+    {
+        <p class="sutil">Não foi possível carregar as rodadas (veja o erro acima).</p>
+    }
+    else if (execucoes is null)
+    {
+        <p class="sutil">Carregando…</p>
+    }
+    else if (execucoes.Count == 0)
+    {
+        <p>O worker ainda não rodou. A primeira rodada acontece no próximo horário agendado (ou por <code>POST /execucoes/agora</code> no worker).</p>
+    }
+    else
+    {
+        @foreach (var e in execucoes)
+        {
+            var vagas = e.Resumo?.VagasRecomendadas ?? [];
+            <div class="rodada">
+                <div class="rodada-cabeca">
+                    <h3>@Data(e.Data)</h3>
+                    <span class="selo @e.Status">@e.Status</span>
+                    <span class="sutil">
+                        @string.Join(" · ", (e.Resumo?.Passos ?? []).Select(p => $"{p.Nome}: {(p.Sucesso ? "ok" : "falhou")}"))
+                    </span>
+                </div>
+
+                @if (vagas.Count == 0)
+                {
+                    <p class="sutil">
+                        Nenhuma vaga nova com nota 60 ou mais@(e.Resumo?.AbaixoDaNotaMinima > 0 ? $" ({e.Resumo.AbaixoDaNotaMinima} avaliadas abaixo disso)" : "").
+                    </p>
+                }
+                else
+                {
+                    <div class="grade">
+                        @foreach (var v in vagas)
+                        {
+                            <CartaoVaga Vaga="VagaCartao.De(v)" EtapaAtual="Etapa(v.VagaId)" OnSalvar="Salvar" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private List<ExecucaoDia>? execucoes;
+    private Dictionary<int, string> etapas = [];
+    private ResultadoMatch? ranking;
+    private bool confirmando, avaliando, somenteNovas, falhouCarregar;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var tarefaExecucoes = Api.ExecucoesAsync();
+            var tarefaCandidaturas = Api.CandidaturasAsync();
+            execucoes = await tarefaExecucoes;
+            etapas = (await tarefaCandidaturas).ToDictionary(c => c.VagaId, c => c.Status);
+        }
+        catch (ErroApiException ex)
+        {
+            erro = ex.Message;
+            falhouCarregar = true;
+        }
+    }
+
+    private async Task AvaliarAgora()
+    {
+        confirmando = false;
+        avaliando = true;
+        erro = null;
+        try { ranking = await Api.AvaliarAgoraAsync(somenteNovas); }
+        catch (ErroApiException ex) { erro = ex.Message; }
+        finally { avaliando = false; }
+    }
+
+    private async Task Salvar(VagaCartao vaga)
+    {
+        erro = null;
+        try
+        {
+            var c = await Api.AtualizarCandidaturaAsync(vaga.VagaId, "salva", null);
+            etapas[c.VagaId] = c.Status;
+        }
+        catch (ErroApiException ex) { erro = ex.Message; }
+    }
+
+    private string? Etapa(int vagaId) => etapas.GetValueOrDefault(vagaId);
+
+    private static string Data(string iso) =>
+        DateOnly.TryParseExact(iso, "yyyy-MM-dd", out var d) ? d.ToString("dddd, dd/MM", new System.Globalization.CultureInfo("pt-BR")) : iso;
+}

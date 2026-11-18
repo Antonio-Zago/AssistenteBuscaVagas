@@ -1,0 +1,80 @@
+@page "/lacunas"
+@inject ApiSupervisor Api
+
+<PageTitle>Lacunas · Assistente de Vagas</PageTitle>
+
+<h1>Lacunas de skills</h1>
+<p class="sutil">
+    Requisitos que o Claude apontou como faltando no seu perfil, contados nas vagas que ele avaliou para o perfil atual.
+    Uma lacuna que aparece em muitas vagas boas é um bom candidato a estudo.
+</p>
+
+<div class="filtro">
+    <label for="nota">Considerar vagas com nota a partir de</label>
+    <select id="nota" value="@notaMinima" @onchange="MudarNota">
+        @foreach (var n in new[] { 0, 40, 50, 60, 70 })
+        {
+            <option value="@n">@(n == 0 ? "qualquer nota" : n.ToString())</option>
+        }
+    </select>
+</div>
+
+@if (erro is not null)
+{
+    <div class="aviso erro">@erro</div>
+}
+
+@if (estatisticas is null)
+{
+    <p class="sutil">@(erro is null ? "Carregando…" : "Não foi possível carregar as lacunas.")</p>
+}
+else if (estatisticas.VagasAvaliadas == 0)
+{
+    <p>Nenhuma vaga foi avaliada pelo Claude ainda. Rode o worker ou "Avaliar agora" em <a href="">Recomendações</a>.</p>
+}
+else
+{
+    <p>
+        Baseado em <strong>@estatisticas.VagasConsideradas</strong> de @estatisticas.VagasAvaliadas vagas avaliadas
+        @if (estatisticas.AvaliadasAte is { } ate) { <span class="sutil"> (última avaliação em @ate.ToLocalTime().ToString("dd/MM HH:mm"))</span> }.
+    </p>
+
+    @if (estatisticas.Lacunas is not { Count: > 0 })
+    {
+        <p class="sutil">Nenhuma lacuna nessas vagas@(estatisticas.VagasConsideradas == 0 ? " (nenhuma vaga com essa nota)" : "").</p>
+    }
+    else
+    {
+        <ol class="barras">
+            @foreach (var l in estatisticas.Lacunas)
+            {
+                <li>
+                    <span class="barra-nome">@l.Skill</span>
+                    <span class="barra-trilho"><span class="barra" style="width: @(Math.Max(2, l.Percentual))%"></span></span>
+                    <span class="barra-valor">@l.Percentual% <span class="sutil">(@l.Vagas)</span></span>
+                </li>
+            }
+        </ol>
+    }
+}
+
+@code {
+    private EstatisticasSkills? estatisticas;
+    private int notaMinima;
+    private string? erro;
+
+    protected override Task OnInitializedAsync() => CarregarAsync();
+
+    private async Task MudarNota(ChangeEventArgs e)
+    {
+        notaMinima = int.TryParse(e.Value?.ToString(), out var n) ? n : 0;
+        await CarregarAsync();
+    }
+
+    private async Task CarregarAsync()
+    {
+        erro = null;
+        try { estatisticas = await Api.LacunasAsync(notaMinima); }
+        catch (ErroApiException ex) { erro = ex.Message; estatisticas = null; }
+    }
+}

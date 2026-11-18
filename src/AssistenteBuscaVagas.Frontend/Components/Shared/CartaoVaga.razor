@@ -1,0 +1,71 @@
+@* Cartão de uma vaga: nota, motivo, pontos fortes, lacunas, impeditivos, link e o botão do kanban. *@
+
+<article class="cartao">
+    <div class="cartao-cabeca">
+        <div>
+            <h3>@Vaga.Titulo</h3>
+            <p class="sutil">@Vaga.Empresa@(Vaga.Local is null ? "" : $" · {Vaga.Local}")</p>
+            @if (!string.IsNullOrWhiteSpace(Detalhe))
+            {
+                <p class="sutil miudo">@Detalhe</p>
+            }
+        </div>
+        @if (Vaga.Nota is { } nota)
+        {
+            <span class="nota @ClasseNota(nota)" title="Nota do Claude (0 a 100)">@nota</span>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Vaga.Justificativa))
+    {
+        <p>@Vaga.Justificativa</p>
+    }
+
+    @if (Vaga.Impeditivos.Count > 0)
+    {
+        <div class="etiquetas"><span class="rotulo">Impeditivos</span>@foreach (var i in Vaga.Impeditivos) { <span class="etiqueta ruim">@i</span> }</div>
+    }
+    @if (Vaga.PontosFortes.Count > 0)
+    {
+        <div class="etiquetas"><span class="rotulo">Atende</span>@foreach (var p in Vaga.PontosFortes) { <span class="etiqueta bom">@p</span> }</div>
+    }
+    @if (Vaga.Lacunas.Count > 0)
+    {
+        <div class="etiquetas"><span class="rotulo">Falta</span>@foreach (var l in Vaga.Lacunas) { <span class="etiqueta">@l</span> }</div>
+    }
+
+    <div class="acoes">
+        <a class="botao" href="@Vaga.Url" target="_blank" rel="noopener noreferrer">Abrir vaga ↗</a>
+        @if (EtapaAtual is not null)
+        {
+            <span class="sutil">No kanban: <strong>@Etapas.Nome(EtapaAtual)</strong></span>
+        }
+        else if (OnSalvar.HasDelegate)
+        {
+            <button class="botao principal" disabled="@salvando" @onclick="Salvar">@(salvando ? "Salvando…" : "Salvar no kanban")</button>
+        }
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public VagaCartao Vaga { get; set; } = null!;
+
+    /// <summary>Etapa da vaga no kanban, se ela já estiver lá.</summary>
+    [Parameter] public string? EtapaAtual { get; set; }
+
+    [Parameter] public EventCallback<VagaCartao> OnSalvar { get; set; }
+
+    /// <summary>Linha extra de contexto (ex.: "avaliada em 17/11 · Remotive").</summary>
+    [Parameter] public string? Detalhe { get; set; }
+
+    private bool salvando;
+
+    private async Task Salvar()
+    {
+        salvando = true;
+        try { await OnSalvar.InvokeAsync(Vaga); }
+        finally { salvando = false; }
+    }
+
+    public static string ClasseNota(int nota) => nota >= 70 ? "alta" : nota >= 50 ? "media" : "baixa";
+}

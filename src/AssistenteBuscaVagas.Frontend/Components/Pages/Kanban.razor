@@ -1,0 +1,136 @@
+@page "/kanban"
+@inject ApiSupervisor Api
+
+<PageTitle>Candidaturas · Assistente de Vagas</PageTitle>
+
+<h1>Candidaturas</h1>
+<p class="sutil">
+    O sistema só registra o andamento. Para se candidatar, abra a vaga e envie pelo site da empresa; depois mova o cartão para "Aplicada".
+</p>
+
+@if (erro is not null)
+{
+    <div class="aviso erro">@erro</div>
+}
+
+@if (falhouCarregar)
+{
+    <p class="sutil">Não foi possível carregar o kanban (veja o erro acima).</p>
+}
+else if (candidaturas is null)
+{
+    <p class="sutil">Carregando…</p>
+}
+else if (candidaturas.Count == 0)
+{
+    <p>Nenhuma vaga no kanban ainda. Use "Salvar no kanban" em <a href="">Recomendações</a> ou no <a href="historico">Histórico</a>.</p>
+}
+else
+{
+    <div class="kanban">
+        @foreach (var (id, nome) in Etapas.Todas)
+        {
+            var daEtapa = candidaturas.Where(c => c.Status == id).ToList();
+            <section class="coluna">
+                <h2>@nome <span class="contador">@daEtapa.Count</span></h2>
+                @foreach (var c in daEtapa)
+                {
+                    <article class="cartao compacto">
+                        <div class="cartao-cabeca">
+                            <div>
+                                <h3>@c.Titulo</h3>
+                                <p class="sutil">@c.Empresa@(c.Local is null ? "" : $" · {c.Local}")</p>
+                            </div>
+                            @if (c.Nota is { } nota)
+                            {
+                                <span class="nota @CartaoVaga.ClasseNota(nota)">@nota</span>
+                            }
+                        </div>
+
+                        <div class="acoes">
+                            <button class="botao pequeno" title="Etapa anterior" disabled="@(Indice(c.Status) == 0 || ocupado == c.VagaId)"
+                                    @onclick="() => Mover(c, -1)">◀</button>
+                            <select value="@c.Status" disabled="@(ocupado == c.VagaId)" @onchange="e => MudarEtapa(c, e.Value?.ToString())">
+                                @foreach (var (outraId, outroNome) in Etapas.Todas)
+                                {
+                                    <option value="@outraId">@outroNome</option>
+                                }
+                            </select>
+                            <button class="botao pequeno" title="Próxima etapa" disabled="@(Indice(c.Status) == Etapas.Todas.Length - 1 || ocupado == c.VagaId)"
+                                    @onclick="() => Mover(c, 1)">▶</button>
+                            <a class="botao pequeno" href="@c.Url" target="_blank" rel="noopener noreferrer">Abrir ↗</a>
+                        </div>
+
+                        <details>
+                            <summary>Notas@(string.IsNullOrWhiteSpace(c.Notas) ? "" : " ✎")</summary>
+                            <textarea rows="3" placeholder="Contato, data da entrevista, salário combinado…" @bind="rascunhos[c.VagaId]"></textarea>
+                            <div class="acoes">
+                                <button class="botao pequeno principal" disabled="@(ocupado == c.VagaId)" @onclick="() => SalvarNotas(c)">Salvar notas</button>
+                                <button class="botao pequeno perigo" disabled="@(ocupado == c.VagaId)" @onclick="() => Remover(c)">Tirar do kanban</button>
+                            </div>
+                        </details>
+                        <p class="sutil miudo">Atualizada em @c.AtualizadaEm.ToLocalTime().ToString("dd/MM HH:mm")</p>
+                    </article>
+                }
+            </section>
+        }
+    </div>
+}
+
+@code {
+    private List<Candidatura>? candidaturas;
+    private readonly Dictionary<int, string?> rascunhos = [];
+    private int? ocupado;
+    private bool falhouCarregar;
+    private string? erro;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            candidaturas = await Api.CandidaturasAsync();
+            foreach (var c in candidaturas) rascunhos[c.VagaId] = c.Notas;
+        }
+        catch (ErroApiException ex)
+        {
+            erro = ex.Message;
+            falhouCarregar = true;
+        }
+    }
+
+    private static int Indice(string status) => Array.FindIndex(Etapas.Todas, e => e.Id == status);
+
+    private Task Mover(Candidatura c, int passo) => MudarEtapa(c, Etapas.Todas[Math.Clamp(Indice(c.Status) + passo, 0, Etapas.Todas.Length - 1)].Id);
+
+    private Task MudarEtapa(Candidatura c, string? etapa) =>
+        string.IsNullOrEmpty(etapa) || etapa == c.Status ? Task.CompletedTask : Gravar(c, etapa, null);
+
+    private Task SalvarNotas(Candidatura c) => Gravar(c, c.Status, rascunhos.GetValueOrDefault(c.VagaId) ?? "");
+
+    private async Task Gravar(Candidatura c, string etapa, string? notas)
+    {
+        ocupado = c.VagaId;
+        erro = null;
+        try
+        {
+            var nova = await Api.AtualizarCandidaturaAsync(c.VagaId, etapa, notas);
+            candidaturas![candidaturas.IndexOf(c)] = nova;
+            rascunhos[nova.VagaId] = nova.Notas;
+        }
+        catch (ErroApiException ex) { erro = ex.Message; }
+        finally { ocupado = null; }
+    }
+
+    private async Task Remover(Candidatura c)
+    {
+        ocupado = c.VagaId;
+        erro = null;
+        try
+        {
+            await Api.RemoverCandidaturaAsync(c.VagaId);
+            candidaturas!.Remove(c);
+        }
+        catch (ErroApiException ex) { erro = ex.Message; }
+        finally { ocupado = null; }
+    }
+}

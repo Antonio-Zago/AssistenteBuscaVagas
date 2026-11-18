@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Testes da fase 4.5: envelope A2A (Comum), índice do roteador e escolha de ferramentas do supervisor. -->
+  <!-- Testes da fase 4.5 e 6: envelope A2A (Comum), índice do roteador, escolha de ferramentas do supervisor e o cliente do frontend. -->
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\AssistenteBuscaVagas.Comum\AssistenteBuscaVagas.Comum.csproj" />
     <ProjectReference Include="..\..\src\AssistenteBuscaVagas.Roteador\AssistenteBuscaVagas.Roteador.csproj" />
     <ProjectReference Include="..\..\src\AssistenteBuscaVagas.Supervisor\AssistenteBuscaVagas.Supervisor.csproj" />
+    <ProjectReference Include="..\..\src\AssistenteBuscaVagas.Frontend\AssistenteBuscaVagas.Frontend.csproj" />
   </ItemGroup>
 
 </Project>

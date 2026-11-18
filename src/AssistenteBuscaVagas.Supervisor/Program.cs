@@ -1,4 +1,5 @@
 using Anthropic;
+using AssistenteBuscaVagas.Supervisor.Api;
 using AssistenteBuscaVagas.Supervisor.Orquestracao;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
@@ -38,12 +39,17 @@ builder.Services
     .UseLogging();
 
 builder.Services.AddScoped<ServicoSupervisor>();
+builder.Services.AddSingleton<ClienteDados>();
 
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-app.MapGet("/", () => "Supervisor: POST /conversa {\"mensagem\": \"...\"} (com Claude) e GET /conversa/rota?mensagem=... (só roteamento, grátis).");
+app.MapGet("/", () => "Supervisor: POST /conversa {\"mensagem\": \"...\"} (com Claude), GET /conversa/rota?mensagem=... (só roteamento, grátis) " +
+                      "e /api/* (dados estruturados para o frontend, sem LLM).");
+
+// Fase 6: a API do frontend. Leituras e gravações estruturadas, em código e grátis (exceto /api/recomendacoes/avaliar).
+app.MapApiFrontend();
 
 // Mostra o roteamento sem chamar o Claude: o que o roteador achou e quais ferramentas seriam oferecidas.
 app.MapGet("/conversa/rota", async (string? mensagem, ServicoSupervisor supervisor, CancellationToken ct) =>
