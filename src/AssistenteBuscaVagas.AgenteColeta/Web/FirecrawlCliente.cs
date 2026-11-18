@@ -8,6 +8,12 @@ public sealed class FirecrawlOptions
 
     /// <summary>Chave da API. Vem do AppHost (parâmetro secreto firecrawl-api-key), nunca do appsettings.</summary>
     public string? ApiKey { get; set; }
+
+    /// <summary>
+    /// Tempo máximo de uma chamada. A busca às vezes passa de 30 s, e o scrape pede 30 s ao próprio Firecrawl
+    /// (ScrapeRequisicao.Timeout), então o cliente precisa esperar mais do que isso.
+    /// </summary>
+    public int TimeoutSegundos { get; set; } = 90;
 }
 
 public sealed record ResultadoBusca(string Url, string Titulo, string Trecho);

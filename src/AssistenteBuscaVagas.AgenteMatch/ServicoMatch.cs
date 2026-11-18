@@ -29,24 +29,28 @@ public sealed class ServicoMatch(
     private readonly ILogger _log = logs.CreateLogger<ServicoMatch>();
 
     /// <summary>Fase 3: filtros rígidos + BM25. Grátis.</summary>
-    public async Task<ResultadoFunil> FunilAsync(int? limite, int? dias, CancellationToken ct)
+    public async Task<ResultadoFunil> FunilAsync(int? limite, int? dias, bool somenteNovas, CancellationToken ct)
     {
         await using var mcp = await McpVagasCliente.ConectarAsync(http, logs, ct);
         var perfil = await PerfilAsync(mcp, ct);
         var funil = new FunilMatch(funilOpcoes.Value);
-        var resultado = funil.Executar(perfil, await LerJanelaAsync(mcp, funil, perfil, dias, ct), limite);
+        var vagas = await LerJanelaAsync(mcp, funil, perfil, dias, ct);
+        if (somenteNovas) vagas = await SemJaRecomendadasAsync(mcp, vagas, ct);
+        var resultado = funil.Executar(perfil, vagas, limite);
         // Só contagens no log: o perfil é dado pessoal.
         _log.LogInformation("Funil: {Etapas}", string.Join(" → ", resultado.Etapas.Select(e => $"{e.Etapa}: {e.Vagas}")));
         return resultado;
     }
 
     /// <summary>Fase 4: funil completo com o Claude no top do BM25. Pago, mas avaliações guardadas não são refeitas.</summary>
-    public async Task<ResultadoMatch> RecomendarAsync(int? dias, CancellationToken ct)
+    /// <param name="somenteNovas">Tira do funil as vagas já mostradas em resumos diários (antes do BM25, para não ocuparem o top 20).</param>
+    public async Task<ResultadoMatch> RecomendarAsync(int? dias, bool somenteNovas, CancellationToken ct)
     {
         await using var mcp = await McpVagasCliente.ConectarAsync(http, logs, ct);
         var perfil = await PerfilAsync(mcp, ct);
         var funil = new FunilMatch(funilOpcoes.Value);
-        var vagas = await LerJanelaAsync(mcp, funil, perfil, dias, ct);
+        IReadOnlyList<VagaParaMatch> vagas = await LerJanelaAsync(mcp, funil, perfil, dias, ct);
+        if (somenteNovas) vagas = await SemJaRecomendadasAsync(mcp, vagas, ct);
         var r = await new Recomendador(funil, avaliador, mcp, avaliacaoOpcoes.Value, _log).ExecutarAsync(perfil, vagas, ct);
         _log.LogInformation("Recomendações: {Etapas}; custo estimado US$ {Custo}",
             string.Join(" → ", r.Etapas.Select(e => $"{e.Etapa}: {e.Vagas}")), r.Custo.CustoEstimadoUsd);
@@ -96,6 +100,12 @@ public sealed class ServicoMatch(
         _log.LogInformation("Avaliação: {Rotuladas} rotuladas, P@5 sem LLM {Sem}, com LLM {Com}",
             r.VagasRotuladas, r.SemLlm.PrecisaoEm5, r.ComLlm?.PrecisaoEm5);
         return r;
+    }
+
+    private static async Task<IReadOnlyList<VagaParaMatch>> SemJaRecomendadasAsync(McpVagasCliente mcp, IReadOnlyList<VagaParaMatch> vagas, CancellationToken ct)
+    {
+        var jaRecomendadas = await mcp.ListarIdsRecomendadosAsync(ct);
+        return vagas.Where(v => !jaRecomendadas.Contains(v.Id)).ToList();
     }
 
     private static async Task<PerfilCompleto> PerfilAsync(McpVagasCliente mcp, CancellationToken ct) =>

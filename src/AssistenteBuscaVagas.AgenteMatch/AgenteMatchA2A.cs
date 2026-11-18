@@ -11,13 +11,13 @@ public sealed class AgenteMatchA2A(ServicoMatch servico, ILogger<AgenteMatchA2A>
         new("recomendar_vagas", "Recomendar vagas",
             "Recomenda as 5 vagas que mais combinam com o perfil do usuário: filtra, ranqueia com BM25 e o Claude avalia as melhores, " +
             "com nota, justificativa, pontos fortes, lacunas e impeditivos. Traz também as lacunas de skills mais frequentes. " +
-            "Dados opcionais: {\"dias\": número de dias da janela de publicação, padrão 30}.",
+            "Dados opcionais: {\"dias\": número de dias da janela de publicação, padrão 30; \"somenteNovas\": true para ignorar vagas já recomendadas em resumos diários anteriores}.",
             ["vagas", "recomendação", "match", "combinam", "melhores", "lacunas", "skills"],
             ["quais vagas combinam comigo?", "me mostre as melhores vagas", "quais skills me faltam?"],
             Paga: true),
         new("ver_funil", "Ver funil sem LLM",
             "Ranqueia as vagas sem IA (filtros rígidos + BM25) e mostra quantas vagas passaram em cada etapa e por que foram descartadas. " +
-            "Grátis e rápido; não dá nota nem justificativa detalhada. Dados opcionais: {\"limite\": 1 a 100, \"dias\": número}.",
+            "Grátis e rápido; não dá nota nem justificativa detalhada. Dados opcionais: {\"limite\": 1 a 100, \"dias\": número, \"somenteNovas\": true para ignorar vagas já recomendadas}.",
             ["vagas", "funil", "bm25", "ranking", "descartadas", "filtros"],
             ["quantas vagas passaram nos filtros?", "ranking das vagas sem IA"]),
         new("medir_precisao", "Medir precisão do ranking",
@@ -29,7 +29,7 @@ public sealed class AgenteMatchA2A(ServicoMatch servico, ILogger<AgenteMatchA2A>
 
     protected override IReadOnlyList<Habilidade> Habilidades => Lista;
 
-    private sealed record DadosJanela(int? Dias, int? Limite);
+    private sealed record DadosJanela(int? Dias, int? Limite, bool? SomenteNovas);
     private sealed record DadosAvaliacao(bool? UsarLlm);
 
     protected override async Task<RespostaHabilidade> ExecutarAsync(PedidoHabilidade pedido, CancellationToken ct)
@@ -39,14 +39,14 @@ public sealed class AgenteMatchA2A(ServicoMatch servico, ILogger<AgenteMatchA2A>
             case "recomendar_vagas":
             {
                 var d = LerDados<DadosJanela>(pedido);
-                var r = await servico.RecomendarAsync(d?.Dias, ct);
+                var r = await servico.RecomendarAsync(d?.Dias, d?.SomenteNovas ?? false, ct);
                 return RespostaHabilidade.Ok(
                     $"{r.Recomendacoes.Count} vagas recomendadas (custo estimado US$ {r.Custo.CustoEstimadoUsd}).", r);
             }
             case "ver_funil":
             {
                 var d = LerDados<DadosJanela>(pedido);
-                var r = await servico.FunilAsync(d?.Limite, d?.Dias, ct);
+                var r = await servico.FunilAsync(d?.Limite, d?.Dias, d?.SomenteNovas ?? false, ct);
                 return RespostaHabilidade.Ok(string.Join(" → ", r.Etapas.Select(e => $"{e.Etapa}: {e.Vagas}")), r);
             }
             case "medir_precisao":

@@ -51,6 +51,17 @@ public sealed class AgentePerfilA2A(IHttpClientFactory http, ILoggerFactory logs
             "Listas substituem a lista anterior inteira: para acrescentar uma cidade, envie a lista completa.",
             ["perfil", "preferências", "atualizar", "mudar", "modalidade", "remoto", "híbrido", "presencial", "cidade", "salário", "cargo"],
             ["atualize meu perfil para aceitar híbrido em Campinas", "agora busco vagas de Tech Lead", "meu salário mínimo é 18 mil"]),
+        new("ajustar_curriculo", "Ajustar currículo",
+            "Edita o currículo já cadastrado sem reenviar o PDF: só o que vier em dados muda. " +
+            "Dados: {\"senioridade\": \"Estágio\"|\"Júnior\"|\"Pleno\"|\"Sênior\"|\"Especialista\"|\"Liderança\", \"cargoAtual\": texto, " +
+            "\"anosExperiencia\": número, \"resumo\": texto, " +
+            "\"adicionarSkills\": [{\"nome\": texto, \"categoria\": \"Linguagem\"|\"Framework\"|\"Nuvem\"|\"BancoDeDados\"|\"Ferramenta\"|\"Pratica\"|\"Outra\", \"anos\": número}], " +
+            "\"removerSkills\": [nome], \"adicionarIdiomas\": [{\"nome\": texto, \"nivel\": \"Básico\"|\"Intermediário\"|\"Avançado\"|\"Fluente\"|\"Nativo\"}], " +
+            "\"removerIdiomas\": [nome], \"adicionarCertificacoes\": [texto], \"removerCertificacoes\": [texto]}. " +
+            "Skill já existente em adicionarSkills é atualizada (ex.: corrigir os anos). Experiências e formação não são editadas aqui. " +
+            "Use só com o que o usuário afirmou; não invente skills nem anos.",
+            ["perfil", "currículo", "skills", "adicionar", "remover", "acrescentar", "tirar", "corrigir", "anos", "experiência", "idioma", "certificação", "cargo"],
+            ["acrescente Docker com 1 ano às minhas skills", "tire Delphi do meu currículo", "corrija C# para 5 anos", "tenho inglês avançado"]),
     ];
 
     protected override IReadOnlyList<Habilidade> Habilidades => Lista;
@@ -82,6 +93,21 @@ public sealed class AgentePerfilA2A(IHttpClientFactory http, ILoggerFactory logs
                     return RespostaHabilidade.Ok("Preferências atualizadas.", salvo.Preferencias);
                 }
                 catch (PerfilRejeitadoException ex)
+                {
+                    return RespostaHabilidade.Falha(ex.Message);
+                }
+            }
+            case "ajustar_curriculo":
+            {
+                try
+                {
+                    var r = await EdicaoCurriculo.AplicarAsync(mcp, LerDados<AjusteCurriculo>(pedido), ct);
+                    var c = r.Perfil.Curriculo;
+                    return RespostaHabilidade.Ok(
+                        $"Currículo atualizado: {c?.Senioridade}, {c?.Skills.Count ?? 0} skills." +
+                        (r.Avisos.Count > 0 ? " Avisos: " + string.Join(" ", r.Avisos) : ""), r);
+                }
+                catch (Exception ex) when (ex is CurriculoInvalidoException or PerfilRejeitadoException)
                 {
                     return RespostaHabilidade.Falha(ex.Message);
                 }

@@ -12,8 +12,14 @@ public sealed class ColetaOptions
     /// <summary>Máximo de chamadas de ferramenta numa execução (trava contra loops).</summary>
     public int MaximoIteracoes { get; set; } = 15;
 
-    /// <summary>O que procurar. Na fase 2 isto vem do perfil (obter_perfil); até lá, da configuração.</summary>
+    /// <summary>
+    /// Reserva do "o que procurar". O valor real vem do perfil no banco (obter_perfil); daqui só sai o que o
+    /// perfil não tiver (ex.: antes de enviar o currículo). Ver PreferenciasDoPerfil.
+    /// </summary>
     public PreferenciasBusca Preferencias { get; set; } = new();
+
+    /// <summary>País do candidato, somado aos locais quando o perfil define modalidades (o perfil não guarda país).</summary>
+    public string PaisCandidato { get; set; } = "Brasil";
 
     public OrcamentoOptions Orcamento { get; set; } = new();
 

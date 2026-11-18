@@ -12,6 +12,8 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
     public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<Rotulo> Rotulos => Set<Rotulo>();
+    public DbSet<ExecucaoDiaria> ExecucoesDiarias => Set<ExecucaoDiaria>();
+    public DbSet<RecomendacaoEnviada> RecomendacoesEnviadas => Set<RecomendacaoEnviada>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +84,22 @@ public sealed class VagasDbContext(DbContextOptions<VagasDbContext> options) : D
             e.HasKey(r => r.VagaId);
             e.Property(r => r.Observacao).HasMaxLength(500);
             e.HasOne(r => r.Vaga).WithMany().HasForeignKey(r => r.VagaId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ExecucaoDiaria>(e =>
+        {
+            e.ToTable("execucoes_diarias");
+            e.Property(x => x.Status).HasMaxLength(20);
+            e.Property(x => x.Resumo).HasColumnType("jsonb");
+            e.HasIndex(x => x.Data).IsUnique();
+        });
+
+        modelBuilder.Entity<RecomendacaoEnviada>(e =>
+        {
+            e.ToTable("recomendacoes_enviadas");
+            e.HasKey(x => x.VagaId);
+            e.HasOne(x => x.Vaga).WithMany().HasForeignKey(x => x.VagaId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Execucao).WithMany().HasForeignKey(x => x.ExecucaoId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

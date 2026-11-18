@@ -17,7 +17,9 @@ public sealed record ResultadoColeta(
     int Novas,
     int Atualizadas,
     IReadOnlyList<VagaRejeitada> Rejeitadas,
-    int CreditosRestantesHoje);
+    int CreditosRestantesHoje,
+    // De onde veio cada parte do "o que procurar": perfil do banco ou reserva do appsettings.
+    FontePreferencias FontePreferencias);
 
 /// <summary>
 /// Uma execução do agente de coleta: monta o contexto (preferências + estado das fontes),
@@ -70,12 +72,18 @@ public sealed class AgenteColetaServico(
             logs.CreateLogger<FerramentasColeta>());
 
         var fontes = await vagas.ListarFontesAsync(ct);
+
+        // O que procurar vem do perfil gravado (o mesmo que o agente_match usa para avaliar). O appsettings só
+        // completa o que faltar no perfil. Só cargos, skills, senioridade, locais e idiomas vão para o prompt.
+        var (preferencias, fontePreferencias) = PreferenciasDoPerfil.Montar(
+            await vagas.ObterPerfilAsync(ct), opcoes.Preferencias, opcoes.PaisCandidato);
+        logs.CreateLogger<AgenteColetaServico>().LogInformation("Preferências da coleta: {Fonte}", fontePreferencias);
         var contexto = $"""
             Data de hoje (UTC): {relogio.GetUtcNow():yyyy-MM-dd}
             Créditos de busca web restantes hoje: {orcamento.Restantes} (busca = {opcoes.Orcamento.CustoBusca}, página aberta = {opcoes.Orcamento.CustoScrape})
 
             Preferências do candidato:
-            {JsonSerializer.Serialize(opcoes.Preferencias, Json)}
+            {JsonSerializer.Serialize(preferencias, Json)}
 
             Fontes cadastradas:
             {JsonSerializer.Serialize(fontes, Json)}
@@ -106,7 +114,7 @@ public sealed class AgenteColetaServico(
         var r = ferramentas.Relatorio;
 
         return new ResultadoColeta(
-            resposta.Text, r.Buscas, r.UrlsAbertas, r.RemotiveConsultada, r.Novas, r.Atualizadas, r.Rejeitadas, orcamento.Restantes);
+            resposta.Text, r.Buscas, r.UrlsAbertas, r.RemotiveConsultada, r.Novas, r.Atualizadas, r.Rejeitadas, orcamento.Restantes, fontePreferencias);
     }
 
     /// <summary>Fluxo fixo, sem LLM: só a coleta ampla da Remotive. Útil para o worker e para testar sem chave.</summary>

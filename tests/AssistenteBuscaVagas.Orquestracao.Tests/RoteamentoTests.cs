@@ -19,6 +19,9 @@ public class RoteamentoTests
             ["perfil", "currículo", "skills", "preferências"], ["qual é o meu perfil?"]),
         Agente("agente_perfil", "atualizar_preferencias", "Atualizar preferências", "Atualiza as preferências de busca: modalidades, cidades, salário.",
             ["perfil", "preferências", "atualizar", "híbrido", "remoto", "cidade"], ["atualize meu perfil para aceitar híbrido em Campinas"]),
+        Agente("agente_perfil", "ajustar_curriculo", "Ajustar currículo", "Edita o currículo já cadastrado sem reenviar o PDF: adicionar ou remover skills, corrigir anos, senioridade, cargo atual, idiomas.",
+            ["perfil", "currículo", "skills", "adicionar", "remover", "acrescentar", "tirar", "corrigir", "anos", "idioma", "cargo"],
+            ["acrescente Docker com 1 ano às minhas skills", "tire Delphi do meu currículo", "corrija C# para 5 anos"]),
         Agente("agente_coleta", "coletar_remotive", "Coletar vagas da Remotive", "Busca vagas novas na Remotive e grava no banco.",
             ["coletar", "buscar", "vagas", "novas", "remotive"], ["busque vagas novas"]),
         new("mcp-vagas.listar_fontes", "mcp", "mcp-vagas", "listar_fontes", "listar_fontes",
@@ -36,6 +39,8 @@ public class RoteamentoTests
     [InlineData("busque vagas novas", "agente_coleta.coletar_remotive")]
     [InlineData("quais fontes de vagas estão cadastradas?", "mcp-vagas.listar_fontes")]
     [InlineData("qual é o meu perfil?", "agente_perfil.obter_perfil")]
+    [InlineData("acrescente Kubernetes com 2 anos às minhas skills", "agente_perfil.ajustar_curriculo")]
+    [InlineData("tire Delphi do meu currículo", "agente_perfil.ajustar_curriculo")]
     public void PrimeiroResultadoEhACapacidadeCerta(string pedido, string esperado)
     {
         var achados = new IndiceCapacidades(Catalogo).Buscar(pedido, 3);

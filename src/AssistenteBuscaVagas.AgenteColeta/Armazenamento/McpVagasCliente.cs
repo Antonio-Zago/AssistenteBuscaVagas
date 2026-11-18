@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AssistenteBuscaVagas.AgenteColeta.Configuracao;
 using AssistenteBuscaVagas.AgenteColeta.Fontes;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol.Client;
@@ -43,6 +44,13 @@ public sealed class McpVagasCliente(McpClient mcp) : IAsyncDisposable
     {
         var r = await ChamarAsync("listar_fontes", new Dictionary<string, object?>(), ct);
         return Ler<List<FonteInfo>>(r) ?? [];
+    }
+
+    /// <summary>O perfil gravado (currículo + preferências), ou null se ainda não foi cadastrado.</summary>
+    public async Task<PerfilColeta?> ObterPerfilAsync(CancellationToken ct)
+    {
+        var texto = TextoDe(await ChamarAsync("obter_perfil", new Dictionary<string, object?>(), ct));
+        return string.IsNullOrWhiteSpace(texto) ? null : JsonSerializer.Deserialize<PerfilColeta>(texto, Json);
     }
 
     /// <summary>Grava em lotes de até 100 e soma os resultados. Chamado pelo código, nunca pelo LLM.</summary>

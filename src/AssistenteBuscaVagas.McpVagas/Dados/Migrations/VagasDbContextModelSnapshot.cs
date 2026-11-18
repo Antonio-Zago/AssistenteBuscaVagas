@@ -23,6 +23,43 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.ExecucaoDiaria", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("ConcluidaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Data")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("IniciadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Resumo")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Data")
+                        .IsUnique();
+
+                    b.ToTable("execucoes_diarias", (string)null);
+                });
+
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Fonte", b =>
                 {
                     b.Property<int>("Id")
@@ -157,6 +194,27 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                     b.ToTable("perfis", (string)null);
                 });
 
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.RecomendacaoEnviada", b =>
+                {
+                    b.Property<int>("VagaId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ExecucaoId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Nota")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("RecomendadaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("VagaId");
+
+                    b.HasIndex("ExecucaoId");
+
+                    b.ToTable("recomendacoes_enviadas", (string)null);
+                });
+
             modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.Rotulo", b =>
                 {
                     b.Property<int>("VagaId")
@@ -268,6 +326,25 @@ namespace AssistenteBuscaVagas.McpVagas.Dados.Migrations
                         .HasForeignKey("VagaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Vaga");
+                });
+
+            modelBuilder.Entity("AssistenteBuscaVagas.McpVagas.Dados.RecomendacaoEnviada", b =>
+                {
+                    b.HasOne("AssistenteBuscaVagas.McpVagas.Dados.ExecucaoDiaria", "Execucao")
+                        .WithMany()
+                        .HasForeignKey("ExecucaoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AssistenteBuscaVagas.McpVagas.Dados.Vaga", "Vaga")
+                        .WithMany()
+                        .HasForeignKey("VagaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Execucao");
 
                     b.Navigation("Vaga");
                 });

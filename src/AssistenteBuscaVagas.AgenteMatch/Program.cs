@@ -38,11 +38,12 @@ app.MapWellKnownAgentCard(app.Services.GetRequiredService<AgentCard>());
 
 // ---------------- Funil ----------------
 
-app.MapGet("/match/funil", (int? limite, int? dias, ServicoMatch servico, CancellationToken ct) =>
-    ExecutarAsync(async () => Results.Ok(await servico.FunilAsync(limite, dias, ct))));
+app.MapGet("/match/funil", (int? limite, int? dias, bool? somenteNovas, ServicoMatch servico, CancellationToken ct) =>
+    ExecutarAsync(async () => Results.Ok(await servico.FunilAsync(limite, dias, somenteNovas == true, ct))));
 
-app.MapPost("/match/recomendacoes", (int? dias, ServicoMatch servico, CancellationToken ct) =>
-    ExecutarAsync(async () => Results.Ok(await servico.RecomendarAsync(dias, ct))));
+// somenteNovas=true ignora vagas já mostradas em resumos diários (é o que o worker usa).
+app.MapPost("/match/recomendacoes", (int? dias, bool? somenteNovas, ServicoMatch servico, CancellationToken ct) =>
+    ExecutarAsync(async () => Results.Ok(await servico.RecomendarAsync(dias, somenteNovas == true, ct))));
 
 // ---------------- Conjunto de avaliação ----------------
 

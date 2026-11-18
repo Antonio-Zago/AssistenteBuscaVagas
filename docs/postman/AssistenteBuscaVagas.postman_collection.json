@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "AssistenteBuscaVagas",
-    "description": "Endpoints existentes até a Fase 4.5. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
+    "description": "Endpoints existentes até a Fase 5. Suba o AppHost antes (as portas são as do launchSettings de cada projeto).\n\nCusto: só as requisições marcadas PAGO chamam APIs pagas (Claude e/ou Firecrawl).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -24,6 +24,10 @@
     {
       "key": "supervisor",
       "value": "http://localhost:5192"
+    },
+    {
+      "key": "worker",
+      "value": "http://localhost:5007"
     },
     {
       "key": "mcp",
@@ -155,6 +159,24 @@
           }
         },
         {
+          "name": "PATCH /perfil/curriculo (ajuste parcial)",
+          "request": {
+            "method": "PATCH",
+            "description": "Edita o currículo já cadastrado sem reenviar o PDF. Só o que vier preenchido muda; tudo é opcional. Skill já existente em adicionarSkills é atualizada (ex.: corrigir anos); skill nova sem categoria vira \"Outra\" e recebe a evidência \"Informado pelo usuário\". Remoções acontecem antes das adições. Experiências e formação não são editadas aqui. Avisos listam o que não mudou nada (ex.: remover skill inexistente). 422 se não houver currículo ou se a validação recusar. Sem LLM, grátis; mudar o currículo faz o match reavaliar as vagas na próxima recomendação.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json; charset=utf-8"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adicionarSkills\": [\n    {\n      \"nome\": \"Docker\",\n      \"categoria\": \"Ferramenta\",\n      \"anos\": 1\n    }\n  ],\n  \"removerSkills\": [\n    \"Bootstrap\"\n  ],\n  \"adicionarIdiomas\": [\n    {\n      \"nome\": \"Inglês\",\n      \"nivel\": \"Avançado\"\n    }\n  ]\n}"
+            },
+            "url": "{{perfil}}/perfil/curriculo"
+          }
+        },
+        {
           "name": "PUT /perfil/preferencias",
           "request": {
             "method": "PUT",
@@ -231,6 +253,28 @@
             },
             "url": "{{perfil}}/a2a"
           }
+        },
+        {
+          "name": "A2A SendMessage: ajustar_curriculo",
+          "request": {
+            "method": "POST",
+            "description": "Mesmo ajuste parcial do PATCH /perfil/curriculo, pelo A2A (é o que o supervisor usa). Envelope do projeto: parte de texto (pedido) + parte de dados {\"habilidade\", \"dados\"}. A resposta vem em result.message.parts: texto (resumo) + dados {\"resultado\"} ou {\"erro\"}.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "A2A-Version",
+                "value": "1.0"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"SendMessage\",\n  \"params\": {\n    \"message\": {\n      \"messageId\": \"{{$guid}}\",\n      \"role\": \"ROLE_USER\",\n      \"parts\": [\n        {\n          \"text\": \"acrescente Docker com 1 ano às minhas skills\"\n        },\n        {\n          \"data\": {\n            \"habilidade\": \"ajustar_curriculo\",\n            \"dados\": {\n              \"adicionarSkills\": [\n                {\n                  \"nome\": \"Docker\",\n                  \"categoria\": \"Ferramenta\",\n                  \"anos\": 1\n                }\n              ]\n            }\n          }\n        }\n      ]\n    }\n  }\n}"
+            },
+            "url": "{{perfil}}/a2a"
+          }
         }
       ]
     },
@@ -255,9 +299,9 @@
           "name": "GET /match/funil (sem LLM)",
           "request": {
             "method": "GET",
-            "description": "Funil da fase 3: filtros rígidos + BM25, sem LLM e sem custo. Precisa de perfil cadastrado. 'limite' (1 a 100, padrão 20) e 'dias' (padrão 30) são opcionais. A resposta traz as etapas do funil com os descartes por motivo, as recomendações com justificativa e lacunas, as lacunas mais frequentes e a consulta usada.",
+            "description": "Funil da fase 3: filtros rígidos + BM25, sem LLM e sem custo. Precisa de perfil cadastrado. 'limite' (1 a 100, padrão 20) e 'dias' (padrão 30) são opcionais. A resposta traz as etapas do funil com os descartes por motivo, as recomendações com justificativa e lacunas, as lacunas mais frequentes e a consulta usada. somenteNovas=true ignora vagas já recomendadas em resumos diários.",
             "url": {
-              "raw": "{{match}}/match/funil?limite=20&dias=30",
+              "raw": "{{match}}/match/funil?limite=20&dias=30&somenteNovas=false",
               "host": [
                 "{{match}}"
               ],
@@ -273,6 +317,10 @@
                 {
                   "key": "dias",
                   "value": "30"
+                },
+                {
+                  "key": "somenteNovas",
+                  "value": "false"
                 }
               ]
             }
@@ -282,9 +330,9 @@
           "name": "POST /match/recomendacoes (Claude, PAGO)",
           "request": {
             "method": "POST",
-            "description": "Funil completo da fase 4: filtros + BM25 + Claude no top 20 do BM25 → 5 recomendações com nota, justificativa, pontos fortes, lacunas e impeditivos. Uma chamada ao Claude por vaga ainda não avaliada; as já avaliadas com o mesmo perfil/modelo/prompt vêm do cache (custo zero). A resposta traz o custo estimado. 'dias' é opcional (padrão 30).",
+            "description": "Funil completo da fase 4: filtros + BM25 + Claude no top 20 do BM25 → 5 recomendações com nota, justificativa, pontos fortes, lacunas e impeditivos. Uma chamada ao Claude por vaga ainda não avaliada; as já avaliadas com o mesmo perfil/modelo/prompt vêm do cache (custo zero). A resposta traz o custo estimado. 'dias' é opcional (padrão 30). somenteNovas=true ignora vagas já recomendadas (é o que o worker usa).",
             "url": {
-              "raw": "{{match}}/match/recomendacoes?dias=30",
+              "raw": "{{match}}/match/recomendacoes?dias=30&somenteNovas=false",
               "host": [
                 "{{match}}"
               ],
@@ -296,6 +344,10 @@
                 {
                   "key": "dias",
                   "value": "30"
+                },
+                {
+                  "key": "somenteNovas",
+                  "value": "false"
                 }
               ]
             }
@@ -545,6 +597,50 @@
               "raw": "{\n  \"mensagem\": \"quantas vagas tenho de cada fonte e como está o funil sem IA?\"\n}"
             },
             "url": "{{supervisor}}/conversa"
+          }
+        }
+      ]
+    },
+    {
+      "name": "worker-diario",
+      "description": "Roda segunda e quinta às 09:00 (America/Sao_Paulo): coleta Remotive + web, recomenda só vagas novas e grava o resumo. Se o computador estava desligado no horário, recupera a rodada assim que o AppHost subir. Agenda:Ativa=false desliga o disparo automático.",
+      "item": [
+        {
+          "name": "GET / (status)",
+          "request": {
+            "method": "GET",
+            "description": "Agenda ligada?, dias e horário, situação (pendente = roda na próxima verificação), próximo horário agendado e a última execução.",
+            "url": "{{worker}}/"
+          }
+        },
+        {
+          "name": "GET /execucoes",
+          "request": {
+            "method": "GET",
+            "description": "Histórico por dia: status, passos, vagas recomendadas (com nota, motivo e link), custo e o texto do resumo.",
+            "url": {
+              "raw": "{{worker}}/execucoes?limite=7",
+              "host": [
+                "{{worker}}"
+              ],
+              "path": [
+                "execucoes"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /execucoes/agora (PAGO)",
+          "request": {
+            "method": "POST",
+            "description": "Roda o dia agora, fora do horário: coleta Remotive + web (Claude + Firecrawl) e recomendação (Claude). Pode levar minutos. 409 se já houver uma execução em andamento. Rodar de novo no mesmo dia soma vagas novas às já mostradas.",
+            "url": "{{worker}}/execucoes/agora"
           }
         }
       ]
@@ -821,6 +917,64 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 7,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas_para_match\",\n    \"arguments\": { \"remoto\": true, \"publicadasNosUltimosDias\": 30, \"aposId\": 0, \"limite\": 5 }\n  }\n}"
+            },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_execucoes_diarias",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 8,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_execucoes_diarias\",\n    \"arguments\": {\n      \"limite\": 7\n    }\n  }\n}"
+            },
+            "url": "{{mcp}}/mcp"
+          }
+        },
+        {
+          "name": "listar_vagas_recomendadas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "Mcp-Session-Id",
+                "value": "{{mcpSessionId}}"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "{{mcpProtocolVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 9,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"listar_vagas_recomendadas\",\n    \"arguments\": {}\n  }\n}"
             },
             "url": "{{mcp}}/mcp"
           }

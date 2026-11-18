@@ -31,7 +31,7 @@ var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
-app.MapGet("/", () => "Agente de perfil. POST /perfil/curriculo (PDF), PUT /perfil/preferencias, GET /perfil. A2A em /a2a.");
+app.MapGet("/", () => "Agente de perfil. POST /perfil/curriculo (PDF), PATCH /perfil/curriculo (ajuste parcial), PUT /perfil/preferencias, GET /perfil. A2A em /a2a.");
 
 app.MapA2A("/a2a");
 app.MapWellKnownAgentCard(app.Services.GetRequiredService<AgentCard>());
@@ -86,6 +86,20 @@ app.MapPut("/perfil/preferencias", async (Preferencias preferencias, IHttpClient
         return Results.Ok(await mcp.SalvarAsync(null, preferencias, ct));
     }
     catch (PerfilRejeitadoException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+    }
+});
+
+// Edição parcial do currículo, sem reenviar o PDF: só o que vier preenchido muda. Sem LLM, grátis.
+app.MapMethods("/perfil/curriculo", ["PATCH"], async (AjusteCurriculo ajuste, IHttpClientFactory http, ILoggerFactory logs, CancellationToken ct) =>
+{
+    try
+    {
+        await using var mcp = await McpVagasCliente.ConectarAsync(http, logs, ct);
+        return Results.Ok(await EdicaoCurriculo.AplicarAsync(mcp, ajuste, ct));
+    }
+    catch (Exception ex) when (ex is CurriculoInvalidoException or PerfilRejeitadoException)
     {
         return Results.Problem(ex.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
     }

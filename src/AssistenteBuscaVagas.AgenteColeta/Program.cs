@@ -27,13 +27,19 @@ builder.Services.AddHttpClient<RobotsTxt>(c =>
     c.DefaultRequestHeaders.UserAgent.ParseAdd($"{RobotsTxt.UserAgent}/0.1");
     c.Timeout = TimeSpan.FromSeconds(10);
 });
+// Firecrawl sem a resiliência padrão: ela corta em 30 s (a busca às vezes demora mais) e repete o POST quando
+// falha, e cada repetição é outra busca ou outro scrape cobrado. Aqui vale um timeout maior e nenhuma repetição
+// automática; quem decide tentar de novo (com outra consulta) é o agente.
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers ainda é marcada como experimental no pacote.
 builder.Services.AddHttpClient<FirecrawlCliente>((sp, c) =>
 {
     var fc = sp.GetRequiredService<IOptions<FirecrawlOptions>>().Value;
     c.BaseAddress = new Uri(fc.UrlBase);
+    c.Timeout = TimeSpan.FromSeconds(Math.Max(10, fc.TimeoutSegundos));
     if (!string.IsNullOrWhiteSpace(fc.ApiKey))
         c.DefaultRequestHeaders.Authorization = new("Bearer", fc.ApiKey);
-});
+}).RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 builder.Services.AddHttpClient(McpVagasCliente.NomeHttpClient);
 
 // LLM: Claude via SDK oficial da Anthropic, exposto como IChatClient (Microsoft.Extensions.AI).

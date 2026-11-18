@@ -79,6 +79,13 @@ public sealed class McpVagasCliente(McpClient mcp) : IRepositorioMatches, IAsync
             }, ct);
     }
 
+    // ---- Vagas já mostradas em resumos diários ----
+
+    private sealed record VagaJaRecomendada(int VagaId);
+
+    public async Task<IReadOnlySet<int>> ListarIdsRecomendadosAsync(CancellationToken ct) =>
+        (Ler<List<VagaJaRecomendada>>(await ChamarAsync("listar_vagas_recomendadas", [], ct)) ?? []).Select(v => v.VagaId).ToHashSet();
+
     // ---- Rótulos do conjunto de avaliação ----
 
     public async Task<IReadOnlyList<RotuloResumo>> ListarRotulosAsync(CancellationToken ct) =>

@@ -53,7 +53,18 @@ public sealed class FerramentasColeta(
             return new(consulta, [], orcamento.Restantes, "Orçamento diário de créditos esgotado. Encerre a coleta web.");
 
         Relatorio.Buscas.Add(consulta);
-        var resultados = await firecrawl.BuscarAsync(consulta, 10, "qdr:w", opcoes.DominiosBloqueados, ct);
+        IReadOnlyList<ResultadoBusca> resultados;
+        try
+        {
+            resultados = await firecrawl.BuscarAsync(consulta, 10, "qdr:w", opcoes.DominiosBloqueados, ct);
+        }
+        catch (Exception ex) when (FalhaDeRede(ex, ct))
+        {
+            // Vira aviso para o modelo em vez de derrubar a coleta. O crédito fica contado: o Firecrawl pode ter cobrado.
+            logger.LogWarning("buscar_web \"{Consulta}\" falhou: {Erro}", consulta, ex.Message);
+            return new(consulta, [], orcamento.Restantes,
+                $"A busca falhou ({Motivo(ex)}). Tente uma consulta mais simples ou encerre a coleta web; não repita a mesma consulta.");
+        }
 
         var filtrados = resultados
             .Where(r => Uri.TryCreate(r.Url, UriKind.Absolute, out var u) && u.Scheme is "http" or "https" && !Bloqueado(u))
@@ -91,10 +102,10 @@ public sealed class FerramentasColeta(
                 coletadas.AddRange(encontradas);
                 status.Add(new(url, encontradas.Count > 0 ? "ok" : "descartada: sem dados estruturados (JobPosting)", encontradas.Count));
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex) when (FalhaDeRede(ex, ct))
             {
                 logger.LogWarning("Falha ao abrir {Url}: {Erro}", url, ex.Message);
-                status.Add(new(url, "erro: falha ao baixar a página"));
+                status.Add(new(url, $"erro: falha ao baixar a página ({Motivo(ex)})"));
             }
         }
 
@@ -131,6 +142,20 @@ public sealed class FerramentasColeta(
         uri.Host.EndsWith("." + d, StringComparison.OrdinalIgnoreCase));
 
     private static string Cortar(string s, int max) => s.Length <= max ? s : s[..max] + "…";
+
+    /// <summary>
+    /// Erro de rede ou de tempo esgotado numa chamada externa. Cancelamento pedido por quem chamou (ct) não conta:
+    /// esse deve interromper a coleta. HttpClient.Timeout aparece como TaskCanceledException sem o ct cancelado.
+    /// </summary>
+    internal static bool FalhaDeRede(Exception ex, CancellationToken ct) =>
+        ex is HttpRequestException or TimeoutException || (ex is TaskCanceledException && !ct.IsCancellationRequested);
+
+    internal static string Motivo(Exception ex) => ex switch
+    {
+        TaskCanceledException or TimeoutException => "tempo esgotado",
+        HttpRequestException { StatusCode: { } s } => $"Firecrawl respondeu {(int)s}",
+        _ => "falha de rede",
+    };
 }
 
 /// <summary>O que de fato aconteceu na execução, medido pelo código (não pelo que o LLM diz).</summary>

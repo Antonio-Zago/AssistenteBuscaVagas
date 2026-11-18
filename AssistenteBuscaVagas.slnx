@@ -19,5 +19,6 @@
     <Project Path="tests/AssistenteBuscaVagas.AgentePerfil.Tests/AssistenteBuscaVagas.AgentePerfil.Tests.csproj" />
     <Project Path="tests/AssistenteBuscaVagas.McpVagas.Tests/AssistenteBuscaVagas.McpVagas.Tests.csproj" />
     <Project Path="tests/AssistenteBuscaVagas.Orquestracao.Tests/AssistenteBuscaVagas.Orquestracao.Tests.csproj" />
+    <Project Path="tests/AssistenteBuscaVagas.WorkerDiario.Tests/AssistenteBuscaVagas.WorkerDiario.Tests.csproj" />
   </Folder>
 </Solution>
